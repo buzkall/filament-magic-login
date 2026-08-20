@@ -48,18 +48,29 @@ php artisan filament-magic-login:uninstall
 composer remove arzcode/filament-magic-login
 ```
 
-The uninstall command undoes what the install command did: it deletes the published config,
-migration and translations, and drops the `magic_login_tokens` table. Both destructive steps are
-confirmed first, and it names any panel the plugin is still registered on so you can remove the
-`->plugin(...)` call before removing the package.
+The uninstall command undoes what the install command did, in the order that leaves the
+application working at every step:
+
+1. Removes `->plugin(MagicLoginPlugin::make())` from your panel providers and the
+   `HasMagicLinkAction` trait from any custom login page, along with the now-unused imports.
+   Without this, `composer remove` would leave your provider pointing at a class that no longer
+   exists and every request would fail.
+2. Drops the `magic_login_tokens` table.
+3. Deletes the published config, migration and translations.
+
+Both destructive steps are confirmed first.
 
 | Option | Effect |
 |---|---|
 | `--force` | Skip every confirmation (for CI or scripted teardown). |
-| `--keep-tokens` | Delete the published files but leave the table and its rows alone. |
+| `--keep-tokens` | Leave the table and its rows alone. |
+| `--keep-code` | Do not touch your source; report the panels to unwire by hand instead. |
 
-It never edits your panel providers or a custom login page — removing the `->plugin(...)` call and
-the `HasMagicLinkAction` trait is left to you.
+The code edits work on PHP's token stream, not regular expressions, and the result is parsed
+before it is written — a file that would not compile is left untouched. Registrations it cannot
+rewrite with certainty (a grouped `use A, B;`, a plugin built through a variable, a conditional
+registration) are reported with their file and line numbers rather than guessed at, as are any
+other references such as event listeners importing `MagicLinkConsumed`.
 
 ## Register the plugin
 

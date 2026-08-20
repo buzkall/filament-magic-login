@@ -53,7 +53,9 @@ return [
         'deleted' => 'Se ha borrado [:path].',
         'missing' => 'No hay nada publicado en [:path].',
         'panels_warning' => 'Sigue registrado en estos paneles, quita antes el plugin de ellos: :panels',
-        'next_steps' => 'Después quita el trait HasMagicLinkAction de cualquier página de acceso personalizada y ejecuta: composer remove arzcode/filament-magic-login',
+        'code_updated' => 'Se ha quitado el paquete de [:path].',
+        'code_manual' => '[:path] todavía menciona el paquete en la(s) línea(s) :lines, quítalas a mano.',
+        'next_steps' => 'Ahora ejecuta: composer remove arzcode/filament-magic-login',
         'done' => 'filament-magic-login se ha desinstalado.',
     ],
 

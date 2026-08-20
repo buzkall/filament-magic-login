@@ -121,3 +121,14 @@ function flashedNotificationBodies(): array
         session()->get('filament.notifications', []),
     )));
 }
+
+function php_syntax_ok(string $code): bool
+{
+    try {
+        token_get_all($code, TOKEN_PARSE);
+    } catch (ParseError) {
+        return false;
+    }
+
+    return true;
+}

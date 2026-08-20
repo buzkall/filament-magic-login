@@ -97,10 +97,65 @@ it('drops the table without prompting with --force', function (): void {
     expect(Schema::hasTable('magic_login_tokens'))->toBeFalse();
 });
 
-it('names the panels the plugin is still registered on', function (): void {
-    $this->artisan('filament-magic-login:uninstall', ['--force' => true])
+it('names the panels the plugin is still registered on with --keep-code', function (): void {
+    $this->artisan('filament-magic-login:uninstall', ['--force' => true, '--keep-code' => true])
         ->expectsOutputToContain('admin')
         ->assertSuccessful();
+});
+
+it('strips the plugin registration out of the application code', function (): void {
+    $provider = app_path('Providers/Filament/AdminPanelProvider.php');
+
+    File::ensureDirectoryExists(dirname($provider));
+    File::put($provider, <<<'PHP'
+    <?php
+
+    namespace App\Providers\Filament;
+
+    use Arzcode\FilamentMagicLogin\MagicLoginPlugin;
+    use Filament\Panel;
+    use Filament\PanelProvider;
+
+    class AdminPanelProvider extends PanelProvider
+    {
+        public function panel(Panel $panel): Panel
+        {
+            return $panel
+                ->id('admin')
+                ->login()
+                ->plugin(MagicLoginPlugin::make()->expiresAfter(10))
+                ->authGuard('web');
+        }
+    }
+    PHP);
+
+    $this->artisan('filament-magic-login:uninstall', ['--force' => true])
+        ->expectsOutputToContain(__('filament-magic-login::filament-magic-login.uninstall.code_updated', [
+            'path' => 'app/Providers/Filament/AdminPanelProvider.php',
+        ]))
+        ->assertSuccessful();
+
+    $rewritten = File::get($provider);
+
+    expect($rewritten)->not->toContain('MagicLoginPlugin')
+        ->and($rewritten)->toContain("->login()\n            ->authGuard('web')")
+        ->and(php_syntax_ok($rewritten))->toBeTrue();
+
+    File::delete($provider);
+});
+
+it('leaves the application code alone with --keep-code', function (): void {
+    $provider = app_path('Providers/Filament/AdminPanelProvider.php');
+
+    File::ensureDirectoryExists(dirname($provider));
+    File::put($provider, "<?php\n\nuse Arzcode\\FilamentMagicLogin\\MagicLoginPlugin;\n\nclass AdminPanelProvider { public function panel(\$panel) { return \$panel->plugin(MagicLoginPlugin::make()); } }\n");
+
+    $this->artisan('filament-magic-login:uninstall', ['--force' => true, '--keep-code' => true])
+        ->assertSuccessful();
+
+    expect(File::get($provider))->toContain('MagicLoginPlugin');
+
+    File::delete($provider);
 });
 
 it('reports a missing table instead of failing', function (): void {

@@ -3,6 +3,7 @@
 namespace Arzcode\FilamentMagicLogin\Commands;
 
 use Arzcode\FilamentMagicLogin\MagicLoginPlugin;
+use Arzcode\FilamentMagicLogin\Support\PackageReferenceRemover;
 use Filament\Facades\Filament;
 use Filament\Panel;
 use Illuminate\Console\Command;
@@ -20,10 +21,13 @@ class UninstallCommand extends Command
 {
     protected $signature = 'filament-magic-login:uninstall
         {--force : Skip every confirmation}
-        {--keep-tokens : Leave the magic_login_tokens table in place}';
+        {--keep-tokens : Leave the magic_login_tokens table in place}
+        {--keep-code : Do not edit panel providers or login pages}';
 
-    public function __construct(private readonly Filesystem $filesystem)
-    {
+    public function __construct(
+        private readonly Filesystem $filesystem,
+        private readonly PackageReferenceRemover $remover,
+    ) {
         parent::__construct();
 
         $this->setDescription(__('filament-magic-login::filament-magic-login.uninstall.description'));
@@ -37,7 +41,7 @@ class UninstallCommand extends Command
             return static::SUCCESS;
         }
 
-        $this->reportRegisteredPanels();
+        $this->cleanSourceFiles();
         $this->dropTokensTable();
         $this->deletePublishedFiles();
 
@@ -58,9 +62,72 @@ class UninstallCommand extends Command
     }
 
     /**
-     * Naming the panels is the one thing this command can do about code it must not
-     * edit: the developer still has to remove the plugin call by hand.
+     * Strips the plugin registration and the trait out of the application's own code.
+     * Without this, removing the Composer package would leave the panel provider
+     * referencing a class that no longer exists, and every request would fail.
      */
+    protected function cleanSourceFiles(): void
+    {
+        if ($this->option('keep-code')) {
+            $this->reportRegisteredPanels();
+
+            return;
+        }
+
+        foreach ($this->sourceFiles() as $path) {
+            $original = $this->filesystem->get($path);
+            $result = $this->remover->remove($original);
+
+            if ($result->changed) {
+                $this->filesystem->put($path, $result->code);
+
+                $this->info(__('filament-magic-login::filament-magic-login.uninstall.code_updated', [
+                    'path' => $this->relative($path),
+                ]));
+            }
+
+            if ($result->isClean()) {
+                continue;
+            }
+
+            $this->warn(__('filament-magic-login::filament-magic-login.uninstall.code_manual', [
+                'path' => $this->relative($path),
+                'lines' => implode(', ', $result->unresolvedLines),
+            ]));
+        }
+    }
+
+    /**
+     * Application PHP files that mention the package at all.
+     *
+     * @return array<int, string>
+     */
+    protected function sourceFiles(): array
+    {
+        $roots = array_filter(
+            [app_path(), base_path('bootstrap'), base_path('routes')],
+            fn (string $path): bool => $this->filesystem->isDirectory($path),
+        );
+
+        $files = [];
+
+        foreach ($roots as $root) {
+            foreach ($this->filesystem->allFiles($root) as $file) {
+                if ($file->getExtension() !== 'php') {
+                    continue;
+                }
+
+                if (! str_contains((string) $this->filesystem->get($file->getRealPath()), PackageReferenceRemover::NAMESPACE)) {
+                    continue;
+                }
+
+                $files[] = $file->getRealPath();
+            }
+        }
+
+        return $files;
+    }
+
     protected function reportRegisteredPanels(): void
     {
         $panels = array_keys(array_filter(
@@ -75,6 +142,13 @@ class UninstallCommand extends Command
         $this->warn(__('filament-magic-login::filament-magic-login.uninstall.panels_warning', [
             'panels' => implode(', ', $panels),
         ]));
+    }
+
+    protected function relative(string $path): string
+    {
+        return str_starts_with($path, base_path())
+            ? ltrim(substr($path, strlen(base_path())), DIRECTORY_SEPARATOR)
+            : $path;
     }
 
     protected function dropTokensTable(): void

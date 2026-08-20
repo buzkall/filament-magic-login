@@ -19,8 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Per-panel plugin configuration with global config fallbacks.
 - `MagicLinkRequested`, `MagicLinkConsumed` and `MagicLinkRejected` events.
 - Rate limiting of both link requests and link redemptions.
-- `filament-magic-login:uninstall` command that removes the published files and the
-  tokens table, with `--force` and `--keep-tokens`.
+- `filament-magic-login:uninstall` command that unwires the plugin from panel
+  providers and login pages, drops the tokens table and deletes the published
+  files, with `--force`, `--keep-tokens` and `--keep-code`.
 - English, Spanish and Catalan translations.
 - Magic-link logins skip Filament's 2FA challenge (the emailed link is the second
   factor) while still honouring a panel's forced 2FA enrolment.
