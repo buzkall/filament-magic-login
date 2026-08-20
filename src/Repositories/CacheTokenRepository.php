@@ -6,6 +6,7 @@ use Arzcode\FilamentMagicLogin\Contracts\TokenRepository;
 use Arzcode\FilamentMagicLogin\Data\MagicLinkToken;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Contracts\Cache\LockProvider;
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
@@ -19,6 +20,12 @@ class CacheTokenRepository implements TokenRepository
     public const PREFIX = 'filament-magic-login';
 
     public const LOCK_SECONDS = 5;
+
+    /**
+     * Entries outlive the link itself so that "expired" and "already used" stay
+     * distinguishable from "never existed", exactly as the database driver does.
+     */
+    public const RETENTION_SECONDS = 86400;
 
     public function create(
         Authenticatable $user,
@@ -44,10 +51,8 @@ class CacheTokenRepository implements TokenRepository
             usedAt: null,
         );
 
-        $ttl = $this->ttl($expiresAt);
-
-        $this->store()->put($key, $token->toArray(), $ttl);
-        $this->addToIndex($token, $ttl);
+        $this->store()->put($key, $token->toArray(), $this->ttl($expiresAt));
+        $this->addToIndex($token, $this->ttl($expiresAt));
 
         return $token;
     }
@@ -63,21 +68,33 @@ class CacheTokenRepository implements TokenRepository
     {
         $key = $this->key($token->panelId, $token->hash);
 
-        // The lock makes two simultaneous hits mutually exclusive; `pull` makes the
-        // winner the only one that finds a payload. A lost lock returns false.
-        return (bool) $this->store()
-            ->lock("{$key}:lock", static::LOCK_SECONDS)
-            ->get(function () use ($key, $token): bool {
-                $payload = $this->store()->pull($key);
+        $claim = function () use ($key, $token): bool {
+            $payload = $this->store()->get($key);
 
-                if (! is_array($payload)) {
-                    return false;
-                }
+            if ((! is_array($payload)) || filled($payload['used_at'] ?? null)) {
+                return false;
+            }
 
-                $this->removeFromIndex($token);
+            $payload['used_at'] = CarbonImmutable::now()->toIso8601String();
 
-                return true;
-            });
+            $this->store()->put($key, $payload, $this->ttl($token->expiresAt));
+            $this->removeFromIndex($token);
+
+            return true;
+        };
+
+        $store = $this->store()->getStore();
+
+        // Without lock support the stored `used_at` is still the gate, just without
+        // the mutual exclusion that makes simultaneous hits safe.
+        if (! $store instanceof LockProvider) {
+            return $claim();
+        }
+
+        // The lock makes two simultaneous hits mutually exclusive, and the stored
+        // `used_at` makes the loser see a used token rather than a missing one.
+        // A lock that cannot be acquired yields false: the race was lost.
+        return (bool) $store->lock("{$key}:lock", self::LOCK_SECONDS)->get($claim);
     }
 
     public function invalidateFor(Authenticatable $user, string $panelId): void
@@ -115,12 +132,12 @@ class CacheTokenRepository implements TokenRepository
 
     protected function key(string $panelId, string $hash): string
     {
-        return static::PREFIX . ":{$panelId}:{$hash}";
+        return static::PREFIX.":{$panelId}:{$hash}";
     }
 
     protected function indexKey(string $panelId, string $type, mixed $id): string
     {
-        return static::PREFIX . ':index:' . $panelId . ':' . sha1($type . '|' . $id);
+        return static::PREFIX.':index:'.$panelId.':'.sha1($type.'|'.$id);
     }
 
     protected function addToIndex(MagicLinkToken $token, int $ttl): void
@@ -163,7 +180,9 @@ class CacheTokenRepository implements TokenRepository
 
     protected function ttl(CarbonImmutable $expiresAt): int
     {
-        return max(1, (int) CarbonImmutable::now()->diffInSeconds($expiresAt, false));
+        $remaining = (int) CarbonImmutable::now()->diffInSeconds($expiresAt, false);
+
+        return max(1, $remaining + static::RETENTION_SECONDS);
     }
 
     protected function typeOf(Authenticatable $user): string

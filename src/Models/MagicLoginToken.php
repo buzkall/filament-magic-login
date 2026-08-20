@@ -50,7 +50,7 @@ class MagicLoginToken extends Model
     }
 
     /**
-     * @return Builder<$this>
+     * @return Builder<static>
      */
     public function prunable(): Builder
     {

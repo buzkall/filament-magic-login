@@ -2,6 +2,7 @@
 
 namespace Arzcode\FilamentMagicLogin\Actions;
 
+use Arzcode\FilamentMagicLogin\Contracts\MagicLinkNotification as MagicLinkNotificationContract;
 use Arzcode\FilamentMagicLogin\Contracts\TokenRepository;
 use Arzcode\FilamentMagicLogin\Events\MagicLinkRejected;
 use Arzcode\FilamentMagicLogin\Events\MagicLinkRequested;
@@ -9,12 +10,13 @@ use Arzcode\FilamentMagicLogin\MagicLoginPlugin;
 use Arzcode\FilamentMagicLogin\Notifications\MagicLinkNotification;
 use Arzcode\FilamentMagicLogin\Notifications\QueuedMagicLinkNotification;
 use Arzcode\FilamentMagicLogin\Support\TokenGenerator;
+use Arzcode\FilamentMagicLogin\Support\UserProviderResolver;
 use Carbon\CarbonImmutable;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Notification as NotificationFacade;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 
@@ -23,6 +25,7 @@ final readonly class SendMagicLink
     public function __construct(
         private TokenGenerator $tokens,
         private TokenRepository $repository,
+        private UserProviderResolver $providers,
     ) {}
 
     /**
@@ -84,7 +87,7 @@ final readonly class SendMagicLink
 
         $notificationClass = $this->resolveNotificationClass($plugin);
 
-        $user->notify(new $notificationClass(
+        NotificationFacade::send($user, new $notificationClass(
             $this->buildUrl($panel, $plaintext),
             $minutes,
             $panelId,
@@ -95,9 +98,7 @@ final readonly class SendMagicLink
 
     private function findUser(string $guard, string $email): ?Authenticatable
     {
-        $provider = Auth::guard($guard)->getProvider();
-
-        return $provider?->retrieveByCredentials(['email' => $email]);
+        return $this->providers->for($guard)?->retrieveByCredentials(['email' => $email]);
     }
 
     private function buildUrl(Panel $panel, string $plaintext): string
@@ -106,7 +107,7 @@ final readonly class SendMagicLink
     }
 
     /**
-     * @return class-string<\Illuminate\Notifications\Notification>
+     * @return class-string<MagicLinkNotificationContract>
      */
     private function resolveNotificationClass(MagicLoginPlugin $plugin): string
     {
@@ -122,7 +123,7 @@ final readonly class SendMagicLink
 
     private function rateLimitKey(string $email, ?string $ip): string
     {
-        return 'filament-magic-login:request:' . sha1(Str::lower($email) . '|' . $ip);
+        return 'filament-magic-login:request:'.sha1(Str::lower($email).'|'.$ip);
     }
 
     /**

@@ -1,7 +1,14 @@
 {
     "name": "arzcode/filament-magic-login",
     "description": "Passwordless \"email me a login link\" option for Filament panels, alongside the standard password form.",
-    "keywords": ["laravel", "filament", "magic-link", "passwordless", "login", "authentication"],
+    "keywords": [
+        "laravel",
+        "filament",
+        "magic-link",
+        "passwordless",
+        "login",
+        "authentication"
+    ],
     "homepage": "https://github.com/arzcode/filament-magic-login",
     "license": "MIT",
     "authors": [
@@ -39,10 +46,16 @@
         }
     },
     "scripts": {
-        "test": "vendor/bin/pest",
+        "test": [
+            "@test:database",
+            "@test:cache"
+        ],
+        "test:database": "MAGIC_LOGIN_STORAGE=database vendor/bin/pest",
+        "test:cache": "MAGIC_LOGIN_STORAGE=cache vendor/bin/pest",
         "test-coverage": "vendor/bin/pest --coverage",
         "analyse": "vendor/bin/phpstan analyse",
-        "format": "vendor/bin/pint"
+        "format": "vendor/bin/pint",
+        "format:test": "vendor/bin/pint --test"
     },
     "config": {
         "sort-packages": true,

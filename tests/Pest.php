@@ -2,9 +2,13 @@
 
 use Arzcode\FilamentMagicLogin\Actions\SendMagicLink;
 use Arzcode\FilamentMagicLogin\Contracts\TokenRepository;
+use Arzcode\FilamentMagicLogin\Notifications\MagicLinkNotification;
+use Arzcode\FilamentMagicLogin\Notifications\QueuedMagicLinkNotification;
 use Arzcode\FilamentMagicLogin\Tests\Fixtures\Models\User;
+use Arzcode\FilamentMagicLogin\Tests\Fixtures\Notifications\CustomMagicLinkNotification;
 use Arzcode\FilamentMagicLogin\Tests\TestCase;
 use Filament\Facades\Filament;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 
 uses(TestCase::class)->in(__DIR__);
@@ -16,7 +20,7 @@ function makeUser(array $attributes = []): User
 {
     return User::query()->create([
         'name' => 'Test User',
-        'email' => Str::random(12) . '@example.com',
+        'email' => Str::random(12).'@example.com',
         'password' => 'password',
         'can_access' => true,
         ...$attributes,
@@ -89,20 +93,20 @@ function magicLinkUrl(User $user, string $panelId = 'admin', bool $remember = fa
     requestLink($user->email, $panelId, $remember);
 
     $classes = [
-        \Arzcode\FilamentMagicLogin\Notifications\QueuedMagicLinkNotification::class,
-        \Arzcode\FilamentMagicLogin\Notifications\MagicLinkNotification::class,
-        \Arzcode\FilamentMagicLogin\Tests\Fixtures\Notifications\CustomMagicLinkNotification::class,
+        QueuedMagicLinkNotification::class,
+        MagicLinkNotification::class,
+        CustomMagicLinkNotification::class,
     ];
 
     foreach ($classes as $class) {
-        $sent = \Illuminate\Support\Facades\Notification::sent($user, $class);
+        $sent = Notification::sent($user, $class);
 
         if ($sent->isNotEmpty()) {
             return $sent->last()->url;
         }
     }
 
-    throw new RuntimeException('No magic link notification was sent to ' . $user->email . '.');
+    throw new RuntimeException('No magic link notification was sent to '.$user->email.'.');
 }
 
 /**

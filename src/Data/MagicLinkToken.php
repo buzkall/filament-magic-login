@@ -2,16 +2,16 @@
 
 namespace Arzcode\FilamentMagicLogin\Data;
 
+use Arzcode\FilamentMagicLogin\Support\UserProviderResolver;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Auth\Authenticatable;
-use Illuminate\Support\Facades\Auth;
 
 final readonly class MagicLinkToken
 {
     public function __construct(
         public string $id,
         public string $authenticatableType,
-        public int | string $authenticatableId,
+        public int|string $authenticatableId,
         public string $hash,
         public string $panelId,
         public string $guard,
@@ -41,7 +41,7 @@ final readonly class MagicLinkToken
      */
     public function resolveUser(): ?Authenticatable
     {
-        $provider = Auth::guard($this->guard)->getProvider();
+        $provider = app(UserProviderResolver::class)->for($this->guard);
 
         if ($provider === null) {
             return null;

@@ -2,11 +2,12 @@
 
 namespace Arzcode\FilamentMagicLogin\Notifications;
 
+use Arzcode\FilamentMagicLogin\Contracts\MagicLinkNotification as MagicLinkNotificationContract;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class MagicLinkNotification extends Notification
+class MagicLinkNotification extends Notification implements MagicLinkNotificationContract
 {
     use Queueable;
 

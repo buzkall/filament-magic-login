@@ -4,6 +4,7 @@ namespace Arzcode\FilamentMagicLogin\Tests\Fixtures\Panels;
 
 use Arzcode\FilamentMagicLogin\MagicLoginPlugin;
 use Closure;
+use Filament\Auth\Pages\Login;
 use Filament\Panel;
 
 /**
@@ -12,7 +13,7 @@ use Filament\Panel;
 class CustomLoginPanelProvider extends FixturePanelProvider
 {
     /** @var class-string */
-    public static string $loginPage = \Filament\Auth\Pages\Login::class;
+    public static string $loginPage = Login::class;
 
     public static ?Closure $configurePlugin = null;
 

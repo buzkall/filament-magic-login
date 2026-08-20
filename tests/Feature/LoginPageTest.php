@@ -7,12 +7,10 @@ use Arzcode\FilamentMagicLogin\Notifications\MagicLinkNotification;
 use Arzcode\FilamentMagicLogin\Notifications\QueuedMagicLinkNotification;
 use Arzcode\FilamentMagicLogin\Pages\Login;
 use Arzcode\FilamentMagicLogin\Tests\Fixtures\Notifications\CustomMagicLinkNotification;
-use Arzcode\FilamentMagicLogin\Tests\Fixtures\Models\User;
 use Filament\Facades\Filament;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\RateLimiter;
-use Livewire\Livewire;
 
 use function Pest\Livewire\livewire;
 

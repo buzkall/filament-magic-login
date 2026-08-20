@@ -99,7 +99,7 @@ it('rejects an already used token', function (): void {
 it('rejects a garbage token', function (): void {
     Event::fake([MagicLinkRejected::class]);
 
-    $this->get('/admin/magic-login/' . str_repeat('a', 64))
+    $this->get('/admin/magic-login/'.str_repeat('a', 64))
         ->assertRedirect(Filament::getPanel('admin')->getLoginUrl());
 
     $this->assertGuest('web');
@@ -183,7 +183,7 @@ it('does not consume the token on a HEAD request', function (): void {
 it('throttles the consume route by ip', function (): void {
     config()->set('filament-magic-login.consume_rate_limit.max_attempts', 3);
 
-    $garbage = '/admin/magic-login/' . str_repeat('b', 64);
+    $garbage = '/admin/magic-login/'.str_repeat('b', 64);
 
     foreach (range(1, 3) as $ignored) {
         $this->get($garbage)->assertRedirect();

@@ -6,6 +6,7 @@ use Arzcode\FilamentMagicLogin\Contracts\TokenRepository;
 use Arzcode\FilamentMagicLogin\Repositories\CacheTokenRepository;
 use Arzcode\FilamentMagicLogin\Repositories\DatabaseTokenRepository;
 use Arzcode\FilamentMagicLogin\Support\TokenGenerator;
+use Arzcode\FilamentMagicLogin\Support\UserProviderResolver;
 use Illuminate\Cache\ArrayStore;
 use Illuminate\Cache\FileStore;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -47,9 +48,15 @@ class FilamentMagicLoginServiceProvider extends PackageServiceProvider
 
     public function packageRegistered(): void
     {
-        $this->app->singleton(TokenGenerator::class);
+        // Panels are registered while Filament boots, which can happen before this
+        // provider boots. Loading the namespace here keeps the LogicException we may
+        // throw during panel registration readable.
+        $this->loadTranslationsFrom(__DIR__.'/../resources/lang', 'filament-magic-login');
 
-        $this->app->singleton(TokenRepository::class, function (): TokenRepository {
+        $this->app->singleton(TokenGenerator::class, fn (): TokenGenerator => new TokenGenerator);
+        $this->app->singleton(UserProviderResolver::class, fn (): UserProviderResolver => new UserProviderResolver);
+
+        $this->app->scoped(TokenRepository::class, function (): TokenRepository {
             $driver = config('filament-magic-login.storage.driver', static::DRIVER_DATABASE);
 
             return match ($driver) {

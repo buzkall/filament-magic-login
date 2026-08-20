@@ -13,7 +13,7 @@ use Illuminate\Http\Response;
 
 class ConsumeMagicLinkController
 {
-    public function __invoke(Request $request, string $token): RedirectResponse | Response
+    public function __invoke(Request $request, string $token): RedirectResponse|Response
     {
         // Mail scanners and link previewers issue HEAD requests; consuming a
         // single-use token for them would burn the link before the human clicks.

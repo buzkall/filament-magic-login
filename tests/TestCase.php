@@ -11,6 +11,7 @@ use BladeUI\Heroicons\BladeHeroiconsServiceProvider;
 use BladeUI\Icons\BladeIconsServiceProvider;
 use Closure;
 use Filament\Actions\ActionsServiceProvider;
+use Filament\Auth\Pages\Login;
 use Filament\Facades\Filament;
 use Filament\FilamentServiceProvider;
 use Filament\Forms\FormsServiceProvider;
@@ -30,7 +31,7 @@ abstract class TestCase extends Orchestra
     /**
      * Storage driver under test. The whole feature suite runs against both.
      */
-    public static string $storageDriver = 'database';
+    public static string $storageDriver = '';
 
     /**
      * Extra config applied while the application boots.
@@ -40,6 +41,15 @@ abstract class TestCase extends Orchestra
     public static array $config = [];
 
     public static bool $registerCustomLoginPanel = false;
+
+    /**
+     * Set through the MAGIC_LOGIN_STORAGE env var so `composer test` can run the
+     * whole suite once per driver.
+     */
+    public static function storageDriver(): string
+    {
+        return static::$storageDriver ?: (string) (env('MAGIC_LOGIN_STORAGE') ?: 'database');
+    }
 
     protected function setUp(): void
     {
@@ -51,13 +61,14 @@ abstract class TestCase extends Orchestra
     protected function tearDown(): void
     {
         static::$config = [];
+        static::$storageDriver = '';
         static::$registerCustomLoginPanel = false;
         AdminPanelProvider::$configurePlugin = null;
         AdminPanelProvider::$configurePanel = null;
         AppPanelProvider::$configurePlugin = null;
         CustomLoginPanelProvider::$configurePlugin = null;
         CustomLoginPanelProvider::$pluginBeforeLogin = false;
-        CustomLoginPanelProvider::$loginPage = \Filament\Auth\Pages\Login::class;
+        CustomLoginPanelProvider::$loginPage = Login::class;
 
         parent::tearDown();
     }
@@ -92,14 +103,14 @@ abstract class TestCase extends Orchestra
 
     protected function defineEnvironment($app): void
     {
-        $app['config']->set('app.key', 'base64:' . base64_encode(random_bytes(32)));
+        $app['config']->set('app.key', 'base64:'.base64_encode(random_bytes(32)));
         $app['config']->set('database.default', 'testing');
         $app['config']->set('auth.providers.users.model', User::class);
         $app['config']->set('cache.default', 'array');
         $app['config']->set('mail.default', 'array');
-        $app['config']->set('view.paths', [__DIR__ . '/Fixtures/views', resource_path('views')]);
+        $app['config']->set('view.paths', [__DIR__.'/Fixtures/views', resource_path('views')]);
 
-        $app['config']->set('filament-magic-login.storage.driver', static::$storageDriver);
+        $app['config']->set('filament-magic-login.storage.driver', static::storageDriver());
 
         foreach (static::$config as $key => $value) {
             $app['config']->set($key, $value);
@@ -113,8 +124,8 @@ abstract class TestCase extends Orchestra
 
     protected function runPackageMigrations(): void
     {
-        (include __DIR__ . '/Fixtures/database/migrations/0001_01_01_000000_create_users_table.php')->up();
-        (include __DIR__ . '/../database/migrations/create_magic_login_tokens_table.php.stub')->up();
+        (include __DIR__.'/Fixtures/database/migrations/0001_01_01_000000_create_users_table.php')->up();
+        (include __DIR__.'/../database/migrations/create_magic_login_tokens_table.php.stub')->up();
     }
 
     /**

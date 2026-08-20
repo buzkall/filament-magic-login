@@ -3,6 +3,7 @@
 namespace Arzcode\FilamentMagicLogin;
 
 use Arzcode\FilamentMagicLogin\Concerns\HasMagicLinkAction;
+use Arzcode\FilamentMagicLogin\Contracts\MagicLinkNotification as MagicLinkNotificationContract;
 use Arzcode\FilamentMagicLogin\Enums\MagicLinkPosition;
 use Arzcode\FilamentMagicLogin\Http\Controllers\ConsumeMagicLinkController;
 use Arzcode\FilamentMagicLogin\Pages\Login;
@@ -14,7 +15,6 @@ use Filament\Panel;
 use Filament\PanelRegistry;
 use Filament\Support\Concerns\EvaluatesClosures;
 use Illuminate\Contracts\Auth\Authenticatable;
-use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Route;
 use Livewire\Finder\Finder;
 use Livewire\Livewire;
@@ -26,32 +26,32 @@ class MagicLoginPlugin implements Plugin
 
     public const ID = 'magic-login';
 
-    protected int | Closure | null $expiresAfterMinutes = null;
+    protected int|Closure|null $expiresAfterMinutes = null;
 
-    protected MagicLinkPosition | Closure | null $position = null;
+    protected MagicLinkPosition|Closure|null $position = null;
 
-    protected string | Closure | null $label = null;
+    protected string|Closure|null $label = null;
 
-    /** @var class-string<Notification>|Closure|null */
-    protected string | Closure | null $notification = null;
+    /** @var class-string<MagicLinkNotificationContract>|Closure|null */
+    protected string|Closure|null $notification = null;
 
-    protected int | Closure | null $rateLimitMaxAttempts = null;
+    protected int|Closure|null $rateLimitMaxAttempts = null;
 
-    protected int | Closure | null $rateLimitDecaySeconds = null;
+    protected int|Closure|null $rateLimitDecaySeconds = null;
 
-    protected int | Closure | null $consumeRateLimitMaxAttempts = null;
+    protected int|Closure|null $consumeRateLimitMaxAttempts = null;
 
-    protected int | Closure | null $consumeRateLimitDecaySeconds = null;
+    protected int|Closure|null $consumeRateLimitDecaySeconds = null;
 
-    protected string | Closure | null $redirectTo = null;
+    protected string|Closure|null $redirectTo = null;
 
-    protected string | Closure | null $routePath = null;
+    protected string|Closure|null $routePath = null;
 
-    protected bool | Closure | null $invalidatePrevious = null;
+    protected bool|Closure|null $invalidatePrevious = null;
 
-    protected bool | Closure | null $honorRemember = null;
+    protected bool|Closure|null $honorRemember = null;
 
-    protected bool | Closure $usesCustomLoginPage = false;
+    protected bool|Closure $usesCustomLoginPage = false;
 
     public static function make(): static
     {
@@ -85,9 +85,9 @@ class MagicLoginPlugin implements Plugin
     public function register(Panel $panel): void
     {
         $panel->routes(function (Panel $panel): void {
-            Route::get($this->getRoutePath() . '/{token}', ConsumeMagicLinkController::class)
+            Route::get($this->getRoutePath().'/{token}', ConsumeMagicLinkController::class)
                 ->middleware([
-                    'guest:' . $panel->getAuthGuard(),
+                    'guest:'.$panel->getAuthGuard(),
                     'throttle:filament-magic-login-consume',
                 ])
                 ->name('magic-login.consume');
@@ -105,21 +105,21 @@ class MagicLoginPlugin implements Plugin
 
     public function boot(Panel $panel): void {}
 
-    public function expiresAfter(int | Closure $minutes): static
+    public function expiresAfter(int|Closure $minutes): static
     {
         $this->expiresAfterMinutes = $minutes;
 
         return $this;
     }
 
-    public function position(MagicLinkPosition | Closure $position): static
+    public function position(MagicLinkPosition|Closure $position): static
     {
         $this->position = $position;
 
         return $this;
     }
 
-    public function label(string | Closure | null $label): static
+    public function label(string|Closure|null $label): static
     {
         $this->label = $label;
 
@@ -127,16 +127,16 @@ class MagicLoginPlugin implements Plugin
     }
 
     /**
-     * @param  class-string<Notification>|Closure  $notification
+     * @param  class-string<MagicLinkNotificationContract>|Closure  $notification
      */
-    public function notification(string | Closure $notification): static
+    public function notification(string|Closure $notification): static
     {
         $this->notification = $notification;
 
         return $this;
     }
 
-    public function rateLimit(int | Closure $maxAttempts, int | Closure $decaySeconds): static
+    public function rateLimit(int|Closure $maxAttempts, int|Closure $decaySeconds): static
     {
         $this->rateLimitMaxAttempts = $maxAttempts;
         $this->rateLimitDecaySeconds = $decaySeconds;
@@ -144,7 +144,7 @@ class MagicLoginPlugin implements Plugin
         return $this;
     }
 
-    public function consumeRateLimit(int | Closure $maxAttempts, int | Closure $decaySeconds): static
+    public function consumeRateLimit(int|Closure $maxAttempts, int|Closure $decaySeconds): static
     {
         $this->consumeRateLimitMaxAttempts = $maxAttempts;
         $this->consumeRateLimitDecaySeconds = $decaySeconds;
@@ -152,28 +152,28 @@ class MagicLoginPlugin implements Plugin
         return $this;
     }
 
-    public function redirectTo(string | Closure | null $url): static
+    public function redirectTo(string|Closure|null $url): static
     {
         $this->redirectTo = $url;
 
         return $this;
     }
 
-    public function routePath(string | Closure $path): static
+    public function routePath(string|Closure $path): static
     {
         $this->routePath = $path;
 
         return $this;
     }
 
-    public function invalidatePrevious(bool | Closure $condition = true): static
+    public function invalidatePrevious(bool|Closure $condition = true): static
     {
         $this->invalidatePrevious = $condition;
 
         return $this;
     }
 
-    public function honorRemember(bool | Closure $condition = true): static
+    public function honorRemember(bool|Closure $condition = true): static
     {
         $this->honorRemember = $condition;
 
@@ -183,7 +183,7 @@ class MagicLoginPlugin implements Plugin
     /**
      * Skip login page detection entirely: the panel's own login page is left alone.
      */
-    public function useCustomLoginPage(bool | Closure $condition = true): static
+    public function useCustomLoginPage(bool|Closure $condition = true): static
     {
         $this->usesCustomLoginPage = $condition;
 
@@ -216,11 +216,11 @@ class MagicLoginPlugin implements Plugin
     }
 
     /**
-     * @return class-string<Notification>
+     * @return class-string<MagicLinkNotificationContract>
      */
     public function getNotificationClass(): string
     {
-        /** @var class-string<Notification> $class */
+        /** @var class-string<MagicLinkNotificationContract> $class */
         $class = $this->evaluate($this->notification)
             ?? config('filament-magic-login.notification');
 

@@ -13,7 +13,7 @@ final readonly class TokenGenerator
      */
     public function plaintext(): string
     {
-        return Str::random(static::PLAINTEXT_LENGTH);
+        return Str::random(self::PLAINTEXT_LENGTH);
     }
 
     /**
