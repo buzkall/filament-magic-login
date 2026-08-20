@@ -2,6 +2,7 @@
 
 namespace Arzcode\FilamentMagicLogin;
 
+use Arzcode\FilamentMagicLogin\Commands\UninstallCommand;
 use Arzcode\FilamentMagicLogin\Contracts\TokenRepository;
 use Arzcode\FilamentMagicLogin\Repositories\CacheTokenRepository;
 use Arzcode\FilamentMagicLogin\Repositories\DatabaseTokenRepository;
@@ -31,6 +32,7 @@ class FilamentMagicLoginServiceProvider extends PackageServiceProvider
             ->hasConfigFile()
             ->hasMigration('create_magic_login_tokens_table')
             ->hasTranslations()
+            ->hasCommand(UninstallCommand::class)
             ->hasInstallCommand(function (InstallCommand $command): void {
                 $command
                     ->publishConfigFile()

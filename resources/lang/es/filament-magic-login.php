@@ -41,4 +41,20 @@ return [
         'cache_driver_skip_migrations' => 'El driver de almacenamiento es "cache": no hace falta migración.',
     ],
 
+    'uninstall' => [
+        'description' => 'Elimina los archivos que publicó filament-magic-login y sus tokens guardados',
+        'confirm' => 'Esto borra la configuración y la migración publicadas, y elimina todos los tokens de acceso guardados. ¿Continuar?',
+        'aborted' => 'No se ha eliminado nada.',
+        'drop_table' => '¿Eliminar la tabla [:table] y todos sus tokens?',
+        'table_dropped' => 'Se ha eliminado la tabla [:table].',
+        'table_missing' => 'No hay ninguna tabla [:table] que eliminar.',
+        'table_kept' => 'Se ha conservado la tabla [:table].',
+        'cache_note' => 'El driver de almacenamiento es "cache": los enlaces guardados caducan solos, no hay nada que eliminar.',
+        'deleted' => 'Se ha borrado [:path].',
+        'missing' => 'No hay nada publicado en [:path].',
+        'panels_warning' => 'Sigue registrado en estos paneles, quita antes el plugin de ellos: :panels',
+        'next_steps' => 'Después quita el trait HasMagicLinkAction de cualquier página de acceso personalizada y ejecuta: composer remove arzcode/filament-magic-login',
+        'done' => 'filament-magic-login se ha desinstalado.',
+    ],
+
 ];

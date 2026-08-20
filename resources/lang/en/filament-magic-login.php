@@ -41,4 +41,20 @@ return [
         'cache_driver_skip_migrations' => 'Storage driver is "cache": no migration needed.',
     ],
 
+    'uninstall' => [
+        'description' => 'Remove the files filament-magic-login published, and its stored tokens',
+        'confirm' => 'This deletes the published config and migration, and drops every stored login token. Continue?',
+        'aborted' => 'Nothing was removed.',
+        'drop_table' => 'Drop the [:table] table and every token in it?',
+        'table_dropped' => 'Dropped the [:table] table.',
+        'table_missing' => 'No [:table] table to drop.',
+        'table_kept' => 'Kept the [:table] table.',
+        'cache_note' => 'Storage driver is "cache": stored links expire on their own, there is nothing to drop.',
+        'deleted' => 'Deleted [:path].',
+        'missing' => 'Nothing published at [:path].',
+        'panels_warning' => 'Still registered on these panels, remove the plugin from them first: :panels',
+        'next_steps' => 'Then remove the HasMagicLinkAction trait from any custom login page and run: composer remove arzcode/filament-magic-login',
+        'done' => 'filament-magic-login has been uninstalled.',
+    ],
+
 ];

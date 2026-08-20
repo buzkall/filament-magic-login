@@ -41,6 +41,26 @@ driver — publishes and offers to run the migration that creates the `magic_log
 **Your `users` table is never touched.** See [Storage](#storage) for why `remember_token` is
 deliberately not reused.
 
+### Uninstalling
+
+```bash
+php artisan filament-magic-login:uninstall
+composer remove arzcode/filament-magic-login
+```
+
+The uninstall command undoes what the install command did: it deletes the published config,
+migration and translations, and drops the `magic_login_tokens` table. Both destructive steps are
+confirmed first, and it names any panel the plugin is still registered on so you can remove the
+`->plugin(...)` call before removing the package.
+
+| Option | Effect |
+|---|---|
+| `--force` | Skip every confirmation (for CI or scripted teardown). |
+| `--keep-tokens` | Delete the published files but leave the table and its rows alone. |
+
+It never edits your panel providers or a custom login page — removing the `->plugin(...)` call and
+the `HasMagicLinkAction` trait is left to you.
+
 ## Register the plugin
 
 Add the plugin to any panel that already calls `->login()`:

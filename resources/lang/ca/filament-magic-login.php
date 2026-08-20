@@ -41,4 +41,20 @@ return [
         'cache_driver_skip_migrations' => 'El driver d\'emmagatzematge és "cache": no cal cap migració.',
     ],
 
+    'uninstall' => [
+        'description' => 'Elimina els fitxers que ha publicat filament-magic-login i els seus tokens desats',
+        'confirm' => 'Això esborra la configuració i la migració publicades, i elimina tots els tokens d\'accés desats. Vols continuar?',
+        'aborted' => 'No s\'ha eliminat res.',
+        'drop_table' => 'Vols eliminar la taula [:table] i tots els seus tokens?',
+        'table_dropped' => 'S\'ha eliminat la taula [:table].',
+        'table_missing' => 'No hi ha cap taula [:table] per eliminar.',
+        'table_kept' => 'S\'ha conservat la taula [:table].',
+        'cache_note' => 'El driver d\'emmagatzematge és "cache": els enllaços desats caduquen sols, no hi ha res per eliminar.',
+        'deleted' => 'S\'ha esborrat [:path].',
+        'missing' => 'No hi ha res publicat a [:path].',
+        'panels_warning' => 'Encara està registrat en aquests taulers, treu-ne abans el plugin: :panels',
+        'next_steps' => 'Després treu el trait HasMagicLinkAction de qualsevol pàgina d\'accés personalitzada i executa: composer remove arzcode/filament-magic-login',
+        'done' => 'filament-magic-login s\'ha desinstal·lat.',
+    ],
+
 ];

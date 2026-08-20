@@ -47,7 +47,11 @@ it('resolves the shipped keys through the translator', function (string $locale)
 it('has no untranslated literal strings in src', function (): void {
     $offenders = [];
 
-    $methods = ['label', 'title', 'body', 'subject', 'line', 'action', 'tooltip', 'placeholder', 'helperText'];
+    $methods = [
+        'label', 'title', 'body', 'subject', 'line', 'action', 'tooltip', 'placeholder', 'helperText',
+        // Console output is user-facing too.
+        'info', 'warn', 'error', 'comment', 'confirm', 'ask', 'setDescription',
+    ];
     $pattern = '/->('.implode('|', $methods).')\(\s*[\'"]/';
 
     foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(__DIR__.'/../../src')) as $file) {
