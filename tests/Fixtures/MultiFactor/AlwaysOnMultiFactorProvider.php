@@ -12,9 +12,14 @@ use Illuminate\Contracts\Auth\Authenticatable;
  */
 class AlwaysOnMultiFactorProvider implements MultiFactorAuthenticationProvider
 {
+    /**
+     * Whether the user is treated as having enrolled a second factor.
+     */
+    public static bool $enabled = true;
+
     public function isEnabled(Authenticatable $user): bool
     {
-        return true;
+        return static::$enabled;
     }
 
     public function getId(): string

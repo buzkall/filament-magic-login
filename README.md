@@ -246,11 +246,21 @@ The cache driver needs no pruning.
 
 ### Multi-factor authentication
 
-Filament 5 runs its multi-factor challenge inside the login page's `authenticate()` method, not in
-middleware. A magic link authenticates through the panel guard directly, so **it does not present
-that challenge** — possession of the mailbox is the factor being checked.
+**A magic link does not trigger the 2FA challenge, by design.** Receiving and clicking a link sent
+to the account's mailbox already proves possession of a second factor, so asking for a TOTP code on
+top would be a second challenge for the same guarantee.
 
-If a panel must enforce a second factor on every entry path, do not enable this package on it.
+Concretely: Filament 5 runs its multi-factor challenge inside the login page's `authenticate()`
+method rather than in middleware, and this package authenticates through the panel guard directly.
+Password logins on the same panel keep their challenge, untouched.
+
+Bypassing the *challenge* does not bypass the *enrolment* requirement. A panel configured with
+`->multiFactorAuthentication([...], isRequired: true)` still sends a magic-link user to the set-up
+page until they have registered a second factor, exactly as it would after a password login. Both
+behaviours are covered by tests.
+
+If your threat model wants a TOTP code even after a mailbox-proven login, don't register this
+plugin on that panel — there is no option to re-add the challenge.
 
 ### Email scanners
 

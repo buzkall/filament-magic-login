@@ -4,6 +4,7 @@ namespace Arzcode\FilamentMagicLogin\Tests;
 
 use Arzcode\FilamentMagicLogin\FilamentMagicLoginServiceProvider;
 use Arzcode\FilamentMagicLogin\Tests\Fixtures\Models\User;
+use Arzcode\FilamentMagicLogin\Tests\Fixtures\MultiFactor\AlwaysOnMultiFactorProvider;
 use Arzcode\FilamentMagicLogin\Tests\Fixtures\Panels\AdminPanelProvider;
 use Arzcode\FilamentMagicLogin\Tests\Fixtures\Panels\AppPanelProvider;
 use Arzcode\FilamentMagicLogin\Tests\Fixtures\Panels\CustomLoginPanelProvider;
@@ -63,6 +64,7 @@ abstract class TestCase extends Orchestra
         static::$config = [];
         static::$storageDriver = '';
         static::$registerCustomLoginPanel = false;
+        AlwaysOnMultiFactorProvider::$enabled = true;
         AdminPanelProvider::$configurePlugin = null;
         AdminPanelProvider::$configurePanel = null;
         AppPanelProvider::$configurePlugin = null;

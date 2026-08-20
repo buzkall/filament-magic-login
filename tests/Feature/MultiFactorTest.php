@@ -28,10 +28,10 @@ it('holds password logins at the multi-factor challenge', function (): void {
 });
 
 /**
- * Filament 5 performs its multi-factor challenge inside the login page's
- * `authenticate()` method rather than in middleware, so a magic link — which
- * authenticates through the panel guard directly — does not present it. The link
- * itself is the second factor (possession of the mailbox); README documents this.
+ * By design: clicking a link delivered to the mailbox already proves possession of
+ * a second factor, so the magic link is not challenged again. Filament 5 keeps its
+ * challenge inside the login page's `authenticate()` method, and this package
+ * authenticates through the panel guard directly.
  */
 it('signs in through a magic link without the challenge', function (): void {
     $user = makeUser();
@@ -39,4 +39,53 @@ it('signs in through a magic link without the challenge', function (): void {
     $this->get(magicLinkUrl($user));
 
     $this->assertAuthenticatedAs($user, 'web');
+});
+
+it('reaches the panel after a magic link login on a panel that requires 2fa', function (): void {
+    $this->rebootWith(
+        configurePanel: fn ($panel) => $panel->multiFactorAuthentication(
+            [new AlwaysOnMultiFactorProvider],
+            isRequired: true,
+        ),
+    );
+
+    Notification::fake();
+    Filament::setCurrentPanel('admin');
+
+    $user = makeUser();
+
+    $this->get(magicLinkUrl($user));
+
+    $this->assertAuthenticatedAs($user, 'web');
+
+    // Enrolment is satisfied, so the guarded pages open normally.
+    $this->get(Filament::getPanel('admin')->getUrl())->assertOk();
+});
+
+/**
+ * Bypassing the *challenge* must not bypass the *enrolment* requirement: a panel
+ * that forces every user to register a second factor still sends them to the set-up
+ * page, exactly as it would after a password login.
+ */
+it('still forces 2fa enrolment after a magic link login', function (): void {
+    $this->rebootWith(
+        configurePanel: fn ($panel) => $panel->multiFactorAuthentication(
+            [new AlwaysOnMultiFactorProvider],
+            isRequired: true,
+        ),
+    );
+
+    Notification::fake();
+    Filament::setCurrentPanel('admin');
+
+    AlwaysOnMultiFactorProvider::$enabled = false;
+
+    $user = makeUser();
+
+    $this->get(magicLinkUrl($user));
+
+    $this->assertAuthenticatedAs($user, 'web');
+
+    $this->get(Filament::getPanel('admin')->getUrl())
+        ->assertRedirect(Filament::getPanel('admin')->getSetUpRequiredMultiFactorAuthenticationUrl());
 });

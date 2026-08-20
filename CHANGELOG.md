@@ -19,3 +19,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `MagicLinkRequested`, `MagicLinkConsumed` and `MagicLinkRejected` events.
 - Rate limiting of both link requests and link redemptions.
 - English, Spanish and Catalan translations.
+- Magic-link logins skip Filament's 2FA challenge (the emailed link is the second
+  factor) while still honouring a panel's forced 2FA enrolment.
