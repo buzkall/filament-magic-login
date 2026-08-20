@@ -26,8 +26,10 @@ it('renders the magic link action below the form by default', function (): void 
         ->assertActionExists('magicLink')
         ->instance();
 
+    // The action hangs below the form actions container, not inside it.
     expect(actionNames(callProtected($page, 'getFormActions')))
-        ->toContain('authenticate', 'magicLink')
+        ->toContain('authenticate')
+        ->not->toContain('magicLink')
         ->and(hintActionNames(callProtected($page, 'getEmailFormComponent')))
         ->toBe([]);
 });

@@ -6,11 +6,12 @@ use Arzcode\FilamentMagicLogin\Actions\SendMagicLink;
 use Arzcode\FilamentMagicLogin\Enums\MagicLinkPosition;
 use Arzcode\FilamentMagicLogin\MagicLoginPlugin;
 use Filament\Actions\Action;
-use Filament\Actions\ActionGroup;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Actions;
 use Filament\Schemas\Components\Component;
+use Filament\Schemas\Components\Form;
 
 /**
  * Adds the "email me a login link" action to a Filament login page.
@@ -93,17 +94,31 @@ trait HasMagicLinkAction
     }
 
     /**
-     * @return array<Action | ActionGroup>
+     * Places the action on its own row underneath the "Sign in" button, rather than
+     * beside it, by hanging it off the form actions container.
      */
-    protected function getFormActions(): array
+    public function getFormContentComponent(): Component
     {
-        $actions = parent::getFormActions();
+        $component = parent::getFormContentComponent();
 
         if ($this->getMagicLoginPlugin()->getPosition() !== MagicLinkPosition::BelowForm) {
-            return $actions;
+            return $component;
         }
 
-        return [...$actions, $this->magicLinkAction()];
+        if (! ($component instanceof Form)) {
+            return $component;
+        }
+
+        return $component->footer([
+            Actions::make($this->getFormActions())
+                ->alignment($this->getFormActionsAlignment())
+                ->fullWidth($this->hasFullWidthFormActions())
+                ->key('form-actions')
+                ->belowContent(
+                    Actions::make([$this->magicLinkAction()])
+                        ->key('magic-login-actions'),
+                ),
+        ]);
     }
 
     protected function getEmailFormComponent(): Component
