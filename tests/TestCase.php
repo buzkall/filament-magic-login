@@ -11,6 +11,7 @@ use BladeUI\Heroicons\BladeHeroiconsServiceProvider;
 use BladeUI\Icons\BladeIconsServiceProvider;
 use Closure;
 use Filament\Actions\ActionsServiceProvider;
+use Filament\Facades\Filament;
 use Filament\FilamentServiceProvider;
 use Filament\Forms\FormsServiceProvider;
 use Filament\Infolists\InfolistsServiceProvider;
@@ -19,6 +20,7 @@ use Filament\Schemas\SchemasServiceProvider;
 use Filament\Support\SupportServiceProvider;
 use Filament\Tables\TablesServiceProvider;
 use Filament\Widgets\WidgetsServiceProvider;
+use Illuminate\Support\Facades\Notification;
 use Livewire\LivewireServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
 use RyanChandler\BladeCaptureDirective\BladeCaptureDirectiveServiceProvider;
@@ -66,19 +68,21 @@ abstract class TestCase extends Orchestra
     protected function getPackageProviders($app): array
     {
         return array_values(array_filter([
-            ActionsServiceProvider::class,
             BladeCaptureDirectiveServiceProvider::class,
             BladeHeroiconsServiceProvider::class,
             BladeIconsServiceProvider::class,
-            FilamentServiceProvider::class,
+            SupportServiceProvider::class,
+            ActionsServiceProvider::class,
             FormsServiceProvider::class,
             InfolistsServiceProvider::class,
-            LivewireServiceProvider::class,
             NotificationsServiceProvider::class,
             SchemasServiceProvider::class,
-            SupportServiceProvider::class,
             TablesServiceProvider::class,
             WidgetsServiceProvider::class,
+            // Livewire must register after Filament's support provider, which rebinds
+            // the Livewire DataStore; otherwise the store is never shared.
+            LivewireServiceProvider::class,
+            FilamentServiceProvider::class,
             FilamentMagicLoginServiceProvider::class,
             AdminPanelProvider::class,
             AppPanelProvider::class,
@@ -132,6 +136,11 @@ abstract class TestCase extends Orchestra
 
         $this->refreshApplication();
         $this->runPackageMigrations();
+
+        // Refreshing the application discards the per-test state set up in setUp().
+        User::unguard();
+        Notification::fake();
+        Filament::setCurrentPanel('admin');
     }
 
     protected function getApplicationTimezone($app): string

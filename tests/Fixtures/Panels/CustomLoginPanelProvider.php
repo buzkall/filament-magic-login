@@ -5,12 +5,11 @@ namespace Arzcode\FilamentMagicLogin\Tests\Fixtures\Panels;
 use Arzcode\FilamentMagicLogin\MagicLoginPlugin;
 use Closure;
 use Filament\Panel;
-use Filament\PanelProvider;
 
 /**
  * Registered only by the tests that exercise custom login page detection.
  */
-class CustomLoginPanelProvider extends PanelProvider
+class CustomLoginPanelProvider extends FixturePanelProvider
 {
     /** @var class-string */
     public static string $loginPage = \Filament\Auth\Pages\Login::class;
@@ -30,7 +29,8 @@ class CustomLoginPanelProvider extends PanelProvider
         $panel
             ->id('custom')
             ->path('custom')
-            ->authGuard('web');
+            ->authGuard('web')
+            ->middleware($this->defaultMiddleware());
 
         // Both chain orders must behave identically.
         if (static::$pluginBeforeLogin) {

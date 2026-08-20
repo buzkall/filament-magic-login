@@ -5,9 +5,8 @@ namespace Arzcode\FilamentMagicLogin\Tests\Fixtures\Panels;
 use Arzcode\FilamentMagicLogin\MagicLoginPlugin;
 use Closure;
 use Filament\Panel;
-use Filament\PanelProvider;
 
-class AdminPanelProvider extends PanelProvider
+class AdminPanelProvider extends FixturePanelProvider
 {
     public static ?Closure $configurePlugin = null;
 
@@ -21,6 +20,7 @@ class AdminPanelProvider extends PanelProvider
             ->path('admin')
             ->login()
             ->authGuard('web')
+            ->middleware($this->defaultMiddleware())
             ->plugin($this->plugin());
 
         if (static::$configurePanel !== null) {
