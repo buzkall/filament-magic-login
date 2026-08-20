@@ -229,3 +229,17 @@ it('rejects a wrong password', function (): void {
 
     expect(auth()->guard('web')->check())->toBeFalse();
 });
+
+it('renders the action label in the page html below the form', function (): void {
+    $this->get(Filament::getPanel('admin')->getLoginUrl())
+        ->assertOk()
+        ->assertSee(__('filament-magic-login::filament-magic-login.actions.magic_link'));
+});
+
+it('renders the hint action in the page html on the email field', function (): void {
+    $this->rebootWith(['filament-magic-login.position' => MagicLinkPosition::EmailFieldHint]);
+
+    $this->get(Filament::getPanel('admin')->getLoginUrl())
+        ->assertOk()
+        ->assertSee(__('filament-magic-login::filament-magic-login.actions.magic_link_tooltip'));
+});

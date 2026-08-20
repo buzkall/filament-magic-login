@@ -32,17 +32,20 @@ class FilamentMagicLoginServiceProvider extends PackageServiceProvider
             ->hasMigration('create_magic_login_tokens_table')
             ->hasTranslations()
             ->hasInstallCommand(function (InstallCommand $command): void {
-                $command->publishConfigFile();
+                $command
+                    ->publishConfigFile()
+                    // The storage driver is read when the command runs, not while the
+                    // package is being configured: config is not merged yet at that point.
+                    ->startWith(function (InstallCommand $command): void {
+                        if (config('filament-magic-login.storage.driver') === static::DRIVER_CACHE) {
+                            $command->comment(__('filament-magic-login::filament-magic-login.install.cache_driver_skip_migrations'));
 
-                if (config('filament-magic-login.storage.driver') === static::DRIVER_CACHE) {
-                    $command->startWith(fn (InstallCommand $command) => $command->comment(
-                        __('filament-magic-login::filament-magic-login.install.cache_driver_skip_migrations'),
-                    ));
-                } else {
-                    $command->publishMigrations()->askToRunMigrations();
-                }
+                            return;
+                        }
 
-                $command->askToStarRepoOnGitHub('arzcode/filament-magic-login');
+                        $command->publishMigrations()->askToRunMigrations();
+                    })
+                    ->askToStarRepoOnGitHub('arzcode/filament-magic-login');
             });
     }
 

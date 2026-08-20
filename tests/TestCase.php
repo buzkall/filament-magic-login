@@ -133,7 +133,7 @@ abstract class TestCase extends Orchestra
      *
      * @param  array<string, mixed>  $config
      */
-    protected function rebootWith(array $config = [], ?Closure $configurePlugin = null, ?Closure $configurePanel = null): void
+    protected function rebootWith(array $config = [], ?Closure $configurePlugin = null, ?Closure $configurePanel = null, ?Closure $configureAppPlugin = null): void
     {
         static::$config = [...static::$config, ...$config];
 
@@ -143,6 +143,10 @@ abstract class TestCase extends Orchestra
 
         if ($configurePanel !== null) {
             AdminPanelProvider::$configurePanel = $configurePanel;
+        }
+
+        if ($configureAppPlugin !== null) {
+            AppPanelProvider::$configurePlugin = $configureAppPlugin;
         }
 
         $this->refreshApplication();
