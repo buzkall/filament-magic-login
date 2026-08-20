@@ -34,9 +34,12 @@ trait HasMagicLinkAction
                 $this->sendMagicLink();
             });
 
+        // Below the form it mirrors the "Sign in" button — same shape and size, but
+        // uncoloured, so it reads as the secondary way in. On the email field it is a
+        // labelled link, which fits the hint row.
         return $plugin->getPosition() === MagicLinkPosition::EmailFieldHint
-            ? $action->iconButton()
-            : $action->link();
+            ? $action->link()
+            : $action->button();
     }
 
     protected function sendMagicLink(): void
@@ -109,15 +112,17 @@ trait HasMagicLinkAction
             return $component;
         }
 
+        // A second actions row in the footer, so the button stacks under the first one
+        // and inherits the same width instead of sharing its row.
         return $component->footer([
             Actions::make($this->getFormActions())
                 ->alignment($this->getFormActionsAlignment())
                 ->fullWidth($this->hasFullWidthFormActions())
-                ->key('form-actions')
-                ->belowContent(
-                    Actions::make([$this->magicLinkAction()])
-                        ->key('magic-login-actions'),
-                ),
+                ->key('form-actions'),
+            Actions::make([$this->magicLinkAction()])
+                ->alignment($this->getFormActionsAlignment())
+                ->fullWidth($this->hasFullWidthFormActions())
+                ->key('magic-login-actions'),
         ]);
     }
 

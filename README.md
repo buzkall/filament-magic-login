@@ -12,8 +12,8 @@ The action appears in one of two places, chosen per panel:
 
 | `MagicLinkPosition::BelowForm` (default) | `MagicLinkPosition::EmailFieldHint` |
 |---|---|
-| <img src="art/below-form.png" alt="Filament login form with an 'Email me a login link' link under the Sign in button" width="420"> | <img src="art/email-field-hint.png" alt="Filament login form with an envelope icon button on the email field" width="420"> |
-| A link under the "Sign in" button. | An envelope icon button on the email field. |
+| <img src="art/below-form.png" alt="Filament login form with an 'Email me a login link' button under the Sign in button" width="420"> | <img src="art/email-field-hint.png" alt="Filament login form with an 'Email me a login link' hint action on the email field" width="420"> |
+| A full-width button under the "Sign in" button — same shape, no colour. | A labelled link on the email field's hint row. |
 
 Nothing about the password form changes: password login, password reset and registration keep
 working exactly as before.
