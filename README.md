@@ -278,6 +278,35 @@ composer analyse   # Larastan, level 6
 composer format    # Pint
 ```
 
+## Trying it in one of your own projects
+
+No need to publish anything. Point the project's `composer.json` at your local checkout with a
+[path repository](https://getcomposer.org/doc/05-repositories.md#path):
+
+```jsonc
+"repositories": [
+    {
+        "type": "path",
+        "url": "../filament-magic-login",       // wherever you cloned it
+        "options": { "symlink": true }          // true = edits apply instantly
+    }
+],
+```
+
+Then require it as a dev version and install as usual:
+
+```bash
+composer require arzcode/filament-magic-login:@dev
+php artisan filament-magic-login:install
+```
+
+With `"symlink": true` the package is symlinked, so changes in your checkout take effect
+immediately — no `composer update` between edits. Use `"symlink": false` to copy instead, which
+mimics a real install more closely (run `composer update arzcode/filament-magic-login` after
+each change).
+
+Remember to drop the `repositories` entry before deploying that project.
+
 ## Contributing
 
 Pull requests are welcome. Please keep `composer test`, `composer analyse` and
