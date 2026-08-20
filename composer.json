@@ -9,7 +9,7 @@
         "login",
         "authentication"
     ],
-    "homepage": "https://github.com/arzcode/filament-magic-login",
+    "homepage": "https://github.com/buzkall/filament-magic-login",
     "license": "MIT",
     "authors": [
         {
@@ -72,5 +72,9 @@
         }
     },
     "minimum-stability": "stable",
-    "prefer-stable": true
+    "prefer-stable": true,
+    "support": {
+        "issues": "https://github.com/buzkall/filament-magic-login/issues",
+        "source": "https://github.com/buzkall/filament-magic-login"
+    }
 }
