@@ -17,9 +17,11 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
+          extensions: dom, curl, libxml, mbstring, zip, intl, pcntl, sqlite, pdo_sqlite
           coverage: none
 
-      - run: composer install --prefer-dist --no-interaction
+      # The package ships no composer.lock, so there is nothing to install from.
+      - run: composer update --prefer-dist --no-interaction
 
       - run: vendor/bin/phpstan analyse --error-format=github --no-progress
 
@@ -33,8 +35,9 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
+          extensions: dom, curl, libxml, mbstring, zip, intl, pcntl, sqlite, pdo_sqlite
           coverage: none
 
-      - run: composer install --prefer-dist --no-interaction
+      - run: composer update --prefer-dist --no-interaction
 
       - run: vendor/bin/pint --test
