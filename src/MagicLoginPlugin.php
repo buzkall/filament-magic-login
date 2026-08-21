@@ -210,11 +210,6 @@ class MagicLoginPlugin implements Plugin
             ?? __('filament-magic-login::filament-magic-login.actions.magic_link'));
     }
 
-    public function getTooltip(): string
-    {
-        return __('filament-magic-login::filament-magic-login.actions.magic_link_tooltip');
-    }
-
     /**
      * @return class-string<MagicLinkNotificationContract>
      */

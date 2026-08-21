@@ -243,5 +243,5 @@ it('renders the hint action in the page html on the email field', function (): v
 
     $this->get(Filament::getPanel('admin')->getLoginUrl())
         ->assertOk()
-        ->assertSee(__('filament-magic-login::filament-magic-login.actions.magic_link_tooltip'));
+        ->assertSee(__('filament-magic-login::filament-magic-login.actions.magic_link'));
 });

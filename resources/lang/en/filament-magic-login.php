@@ -4,7 +4,6 @@ return [
 
     'actions' => [
         'magic_link' => 'Email me a login link',
-        'magic_link_tooltip' => 'Sign in without a password',
     ],
 
     'messages' => [

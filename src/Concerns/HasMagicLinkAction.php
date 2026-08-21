@@ -27,7 +27,6 @@ trait HasMagicLinkAction
 
         $action = Action::make('magicLink')
             ->label(fn (): string => $this->getMagicLoginPlugin()->getLabel())
-            ->tooltip(fn (): string => $this->getMagicLoginPlugin()->getTooltip())
             ->icon('heroicon-o-envelope')
             ->color('gray')
             ->action(function (): void {

@@ -4,7 +4,6 @@ return [
 
     'actions' => [
         'magic_link' => 'Envia\'m un enllaç d\'accés',
-        'magic_link_tooltip' => 'Entrar sense contrasenya',
     ],
 
     'messages' => [
