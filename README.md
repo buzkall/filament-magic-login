@@ -1,9 +1,5 @@
 # Filament Magic Login
 
-[![Latest Version on Packagist](https://img.shields.io/packagist/v/arzcode/filament-magic-login.svg?style=flat-square)](https://packagist.org/packages/arzcode/filament-magic-login)
-[![Tests](https://img.shields.io/github/actions/workflow/status/buzkall/filament-magic-login/tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/buzkall/filament-magic-login/actions/workflows/tests.yml)
-[![License](https://img.shields.io/packagist/l/arzcode/filament-magic-login.svg?style=flat-square)](LICENSE)
-
 Passwordless **"email me a login link"** for Filament panels, added *alongside* the standard
 email/password form rather than replacing it. Multi-panel aware, single-use hashed tokens,
 translated into English, Spanish and Catalan.

@@ -46,8 +46,7 @@ class FilamentMagicLoginServiceProvider extends PackageServiceProvider
                         }
 
                         $command->publishMigrations()->askToRunMigrations();
-                    })
-                    ->askToStarRepoOnGitHub('buzkall/filament-magic-login');
+                    });
             });
     }
 
