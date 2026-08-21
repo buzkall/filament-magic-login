@@ -34,8 +34,7 @@ php artisan filament-magic-login:install
 The install command publishes the config file and — unless you have chosen the `cache` storage
 driver — publishes and offers to run the migration that creates the `magic_login_tokens` table.
 
-**Your `users` table is never touched.** See [Storage](#storage) for why `remember_token` is
-deliberately not reused.
+**Your `users` table is never touched.**
 
 ### Uninstalling
 
@@ -228,20 +227,6 @@ Set it globally in config; it is not a per-panel option.
 'storage' => ['driver' => 'cache'],
 ```
 
-### Why not reuse `users.remember_token`?
-
-Deliberately not, for four reasons:
-
-1. It is a **long-lived plaintext** credential that Laravel's remember-me cookie already depends
-   on. Emailing it turns the email into a permanent session key.
-2. It has **no expiry, no `used_at`, and no panel or guard binding**.
-3. Making it single-use means rotating it, which silently signs the user out of every remembered
-   device.
-4. One value per user means no concurrent links and nothing to audit.
-
-Laravel's own `password_reset_tokens` is the precedent this package follows: a separate,
-hashed, expiring table — with extra columns for panel binding and single-use semantics.
-
 ## Pruning (database driver)
 
 Rows are kept for 24 hours after they expire, then become prunable. Schedule Laravel's pruner:
@@ -304,35 +289,6 @@ composer test      # the whole suite against both storage drivers
 composer analyse   # Larastan, level 6
 composer format    # Pint
 ```
-
-## Trying it in one of your own projects
-
-No need to publish anything. Point the project's `composer.json` at your local checkout with a
-[path repository](https://getcomposer.org/doc/05-repositories.md#path):
-
-```jsonc
-"repositories": [
-    {
-        "type": "path",
-        "url": "../filament-magic-login",       // wherever you cloned it
-        "options": { "symlink": true }          // true = edits apply instantly
-    }
-],
-```
-
-Then require it as a dev version and install as usual:
-
-```bash
-composer require arzcode/filament-magic-login:@dev
-php artisan filament-magic-login:install
-```
-
-With `"symlink": true` the package is symlinked, so changes in your checkout take effect
-immediately — no `composer update` between edits. Use `"symlink": false` to copy instead, which
-mimics a real install more closely (run `composer update arzcode/filament-magic-login` after
-each change).
-
-Remember to drop the `repositories` entry before deploying that project.
 
 ## Contributing
 
