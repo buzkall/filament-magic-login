@@ -38,7 +38,23 @@ return [
     ],
 
     'install' => [
+        'description' => 'Instal\'lar filament-magic-login',
+        'intro' => 'Instal\'lar filament-magic-login',
         'cache_driver_skip_migrations' => 'El driver d\'emmagatzematge és "cache": no cal cap migració.',
+        'config_overwrite' => 'El fitxer de configuració ja està publicat. El vols sobreescriure?',
+        'config_kept' => 'S\'ha mantingut el fitxer de configuració que ja tenies.',
+        'config_published' => 'Fitxer de configuració publicat.',
+        'migrations_kept' => 'La migració ja està publicada.',
+        'migrations_published' => 'Migració publicada.',
+        'run_migrations' => 'Vols executar les migracions ara?',
+        'migrations_ran' => 'Migracions executades.',
+        'migrations_skipped' => 'Migracions omeses. Executa-les abans d\'enviar el primer enllaç d\'accés.',
+        'schedule_prompt' => 'Vols programar la neteja diària dels tokens caducats?',
+        'schedule_added' => 'S\'ha afegit la neteja a [:path].',
+        'schedule_exists' => 'La neteja ja està programada.',
+        'schedule_failed' => 'No s\'ha pogut editar [:path] amb seguretat, així que s\'ha deixat intacte.',
+        'schedule_manual' => 'Programa la neteja tu mateix amb:',
+        'done' => 'filament-magic-login s\'ha instal\'lat.',
     ],
 
     'uninstall' => [

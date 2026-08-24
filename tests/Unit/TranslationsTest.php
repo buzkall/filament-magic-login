@@ -52,7 +52,13 @@ it('has no untranslated literal strings in src', function (): void {
         // Console output is user-facing too.
         'info', 'warn', 'error', 'comment', 'confirm', 'ask', 'setDescription',
     ];
-    $pattern = '/->('.implode('|', $methods).')\(\s*[\'"]/';
+    // Laravel Prompts are plain functions, so they need a pattern of their own.
+    $functions = ['confirm', 'intro', 'outro', 'note', 'warning', 'info', 'error', 'alert', 'text', 'select'];
+
+    $patterns = [
+        '/->('.implode('|', $methods).')\(\s*[\'"]/',
+        '/(?<![\w>$])('.implode('|', $functions).')\(\s*(label:\s*)?[\'"]/',
+    ];
 
     foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(__DIR__.'/../../src')) as $file) {
         if ($file->getExtension() !== 'php') {
@@ -60,8 +66,10 @@ it('has no untranslated literal strings in src', function (): void {
         }
 
         foreach (file($file->getPathname()) as $number => $line) {
-            if (preg_match($pattern, $line)) {
-                $offenders[] = $file->getFilename().':'.($number + 1).' — '.trim($line);
+            foreach ($patterns as $pattern) {
+                if (preg_match($pattern, $line)) {
+                    $offenders[] = $file->getFilename().':'.($number + 1).' — '.trim($line);
+                }
             }
         }
     }

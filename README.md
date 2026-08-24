@@ -32,7 +32,12 @@ php artisan filament-magic-login:install
 ```
 
 The install command publishes the config file and — unless you have chosen the `cache` storage
-driver — publishes and offers to run the migration that creates the `magic_login_tokens` table.
+driver — publishes and offers to run the migration that creates the `magic_login_tokens` table,
+then offers to schedule the token pruner in `routes/console.php`.
+
+Every step is a question, and the pruner question defaults to *no*: with no terminal to answer it
+(CI, a Docker build), the command prints the snippet instead of editing your console routes. It
+also leaves them alone if the pruner is already scheduled, so re-running the command is safe.
 
 **Your `users` table is never touched.**
 
@@ -229,16 +234,22 @@ Set it globally in config; it is not a per-panel option.
 
 ## Pruning (database driver)
 
-Rows are kept for 24 hours after they expire, then become prunable. Schedule Laravel's pruner:
+Rows are kept for 24 hours after they expire, then become prunable. The install command offers to
+schedule Laravel's pruner for you; to do it by hand, add this to `routes/console.php`:
 
 ```php
-// bootstrap/app.php or a service provider
+use Illuminate\Support\Facades\Schedule;
+use Arzcode\FilamentMagicLogin\Models\MagicLoginToken;
+
 Schedule::command('model:prune', [
-    '--model' => [\Arzcode\FilamentMagicLogin\Models\MagicLoginToken::class],
+    '--model' => [MagicLoginToken::class],
 ])->daily();
 ```
 
 The cache driver needs no pruning.
+
+Note that `filament-magic-login:uninstall` does not remove this — it reports the lines and leaves
+them for you to delete, the same as any other code you wrote by hand.
 
 ## Security notes
 

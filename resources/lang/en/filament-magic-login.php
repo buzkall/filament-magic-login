@@ -38,7 +38,23 @@ return [
     ],
 
     'install' => [
+        'description' => 'Install filament-magic-login',
+        'intro' => 'Install filament-magic-login',
         'cache_driver_skip_migrations' => 'Storage driver is "cache": no migration needed.',
+        'config_overwrite' => 'The config file is already published. Overwrite it?',
+        'config_kept' => 'Kept the config file you already had.',
+        'config_published' => 'Published the config file.',
+        'migrations_kept' => 'The migration is already published.',
+        'migrations_published' => 'Published the migration.',
+        'run_migrations' => 'Run the migrations now?',
+        'migrations_ran' => 'Migrations run.',
+        'migrations_skipped' => 'Skipped the migrations. Run them before the first login link is sent.',
+        'schedule_prompt' => 'Schedule daily pruning of expired tokens?',
+        'schedule_added' => 'Added the pruner to [:path].',
+        'schedule_exists' => 'The pruner is already scheduled.',
+        'schedule_failed' => 'Could not edit [:path] safely, so it was left untouched.',
+        'schedule_manual' => 'Schedule the pruner yourself with:',
+        'done' => 'filament-magic-login has been installed.',
     ],
 
     'uninstall' => [

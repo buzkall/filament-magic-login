@@ -38,7 +38,23 @@ return [
     ],
 
     'install' => [
+        'description' => 'Instalar filament-magic-login',
+        'intro' => 'Instalar filament-magic-login',
         'cache_driver_skip_migrations' => 'El driver de almacenamiento es "cache": no hace falta migración.',
+        'config_overwrite' => 'El archivo de configuración ya está publicado. ¿Quieres sobrescribirlo?',
+        'config_kept' => 'Se ha mantenido el archivo de configuración que ya tenías.',
+        'config_published' => 'Archivo de configuración publicado.',
+        'migrations_kept' => 'La migración ya está publicada.',
+        'migrations_published' => 'Migración publicada.',
+        'run_migrations' => '¿Ejecutar las migraciones ahora?',
+        'migrations_ran' => 'Migraciones ejecutadas.',
+        'migrations_skipped' => 'Migraciones omitidas. Ejecútalas antes de enviar el primer enlace de acceso.',
+        'schedule_prompt' => '¿Programar la limpieza diaria de los tokens caducados?',
+        'schedule_added' => 'Se ha añadido la limpieza a [:path].',
+        'schedule_exists' => 'La limpieza ya está programada.',
+        'schedule_failed' => 'No se ha podido editar [:path] con seguridad, así que se ha dejado intacto.',
+        'schedule_manual' => 'Programa la limpieza tú mismo con:',
+        'done' => 'filament-magic-login se ha instalado.',
     ],
 
     'uninstall' => [

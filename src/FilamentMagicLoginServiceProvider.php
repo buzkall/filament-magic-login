@@ -2,6 +2,7 @@
 
 namespace Arzcode\FilamentMagicLogin;
 
+use Arzcode\FilamentMagicLogin\Commands\InstallCommand;
 use Arzcode\FilamentMagicLogin\Commands\UninstallCommand;
 use Arzcode\FilamentMagicLogin\Contracts\TokenRepository;
 use Arzcode\FilamentMagicLogin\Repositories\CacheTokenRepository;
@@ -15,7 +16,6 @@ use Illuminate\Cache\Repository as CacheRepository;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use LogicException;
-use Spatie\LaravelPackageTools\Commands\InstallCommand;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 
@@ -32,22 +32,8 @@ class FilamentMagicLoginServiceProvider extends PackageServiceProvider
             ->hasConfigFile()
             ->hasMigration('create_magic_login_tokens_table')
             ->hasTranslations()
-            ->hasCommand(UninstallCommand::class)
-            ->hasInstallCommand(function (InstallCommand $command): void {
-                $command
-                    ->publishConfigFile()
-                    // The storage driver is read when the command runs, not while the
-                    // package is being configured: config is not merged yet at that point.
-                    ->startWith(function (InstallCommand $command): void {
-                        if (config('filament-magic-login.storage.driver') === static::DRIVER_CACHE) {
-                            $command->comment(__('filament-magic-login::filament-magic-login.install.cache_driver_skip_migrations'));
-
-                            return;
-                        }
-
-                        $command->publishMigrations()->askToRunMigrations();
-                    });
-            });
+            ->hasCommand(InstallCommand::class)
+            ->hasCommand(UninstallCommand::class);
     }
 
     public function packageRegistered(): void
