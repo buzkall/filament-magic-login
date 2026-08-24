@@ -12,6 +12,7 @@ use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Actions;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Form;
+use Filament\Schemas\Components\Html;
 
 /**
  * Adds the "email me a login link" action to a Filament login page.
@@ -34,8 +35,8 @@ trait HasMagicLinkAction
             });
 
         // Below the form it mirrors the "Sign in" button — same shape and size, but
-        // uncoloured, so it reads as the secondary way in. On the email field it is a
-        // labelled link, which fits the hint row.
+        // uncolored, so it reads as the secondary way in. On the email field it is a
+        // labeled link, which fits the hint row.
         return $plugin->getPosition() === MagicLinkPosition::EmailFieldHint
             ? $action->link()
             : $action->button();
@@ -118,11 +119,36 @@ trait HasMagicLinkAction
                 ->alignment($this->getFormActionsAlignment())
                 ->fullWidth($this->hasFullWidthFormActions())
                 ->key('form-actions'),
+
+            $this->magicLinkSeparator(),
+
             Actions::make([$this->magicLinkAction()])
                 ->alignment($this->getFormActionsAlignment())
                 ->fullWidth($this->hasFullWidthFormActions())
                 ->key('magic-login-actions'),
         ]);
+    }
+
+    /**
+     * A rule with "or" set in the middle of it, telling the two buttons apart.
+     *
+     * The styles are inline and lean on currentColor: panels ship Filament's compiled
+     * stylesheet, which carries no utility classes for a package view to borrow, and
+     * currentColor spares us a dark-mode variant.
+     */
+    protected function magicLinkSeparator(): Component
+    {
+        $rule = '<span style="flex: 1 1 0%; height: 1px; background-color: currentColor; opacity: 0.15;"></span>';
+
+        return Html::make(
+            '<div data-magic-login-separator style="display: flex; align-items: center; gap: 0.75rem;" aria-hidden="true">'
+            .$rule
+            .'<span style="font-size: 0.875rem; line-height: 1.25rem; opacity: 0.6;">'
+            .e(__('filament-magic-login::filament-magic-login.actions.or'))
+            .'</span>'
+            .$rule
+            .'</div>'
+        )->key('magic-login-separator');
     }
 
     protected function getEmailFormComponent(): Component

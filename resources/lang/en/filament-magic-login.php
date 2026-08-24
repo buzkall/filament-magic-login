@@ -4,6 +4,7 @@ return [
 
     'actions' => [
         'magic_link' => 'Email me a login link',
+        'or' => 'or',
     ],
 
     'messages' => [

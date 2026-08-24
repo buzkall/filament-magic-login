@@ -4,6 +4,7 @@ return [
 
     'actions' => [
         'magic_link' => 'Envia\'m un enllaç d\'accés',
+        'or' => 'o',
     ],
 
     'messages' => [

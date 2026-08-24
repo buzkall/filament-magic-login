@@ -238,6 +238,21 @@ it('renders the action label in the page html below the form', function (): void
         ->assertSee(__('filament-magic-login::filament-magic-login.actions.magic_link'));
 });
 
+it('separates the two buttons with an "or" rule below the form', function (): void {
+    $this->get(Filament::getPanel('admin')->getLoginUrl())
+        ->assertOk()
+        ->assertSee('data-magic-login-separator', escape: false)
+        ->assertSee(__('filament-magic-login::filament-magic-login.actions.or'));
+});
+
+it('leaves out the "or" rule when the action sits on the email field', function (): void {
+    $this->rebootWith(['filament-magic-login.position' => MagicLinkPosition::EmailFieldHint]);
+
+    $this->get(Filament::getPanel('admin')->getLoginUrl())
+        ->assertOk()
+        ->assertDontSee('data-magic-login-separator', escape: false);
+});
+
 it('renders the hint action in the page html on the email field', function (): void {
     $this->rebootWith(['filament-magic-login.position' => MagicLinkPosition::EmailFieldHint]);
 
