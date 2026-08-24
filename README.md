@@ -31,13 +31,16 @@ composer require arzcode/filament-magic-login
 php artisan filament-magic-login:install
 ```
 
-The install command publishes the config file and — unless you have chosen the `cache` storage
-driver — publishes and offers to run the migration that creates the `magic_login_tokens` table,
-then offers to schedule the token pruner in `routes/console.php`.
+The install command offers to publish the config file and — unless you have chosen the `cache`
+storage driver — to publish and run the migration that creates the `magic_login_tokens` table and
+to schedule the token pruner in `routes/console.php`. Last, it offers to register the plugin on a
+panel for you, which is the step that puts the action on your login page.
 
-Every step is a question, and the pruner question defaults to *no*: with no terminal to answer it
-(CI, a Docker build), the command prints the snippet instead of editing your console routes. It
-also leaves them alone if the pruner is already scheduled, so re-running the command is safe.
+Every step is a question and every one can be declined; nothing here is mandatory. Skip the config
+file and the package defaults apply. The two questions that edit your own code — the pruner and the
+plugin registration — default to *no*, so with no terminal to answer them (CI, a Docker build) the
+command prints the snippet instead of editing anything. It also stays quiet about whatever is
+already in place, so re-running the command is safe.
 
 **Your `users` table is never touched.**
 
@@ -74,7 +77,8 @@ other references such as event listeners importing `MagicLinkConsumed`.
 
 ## Register the plugin
 
-Add the plugin to any panel that already calls `->login()`:
+`filament-magic-login:install` offers to do this for you. To do it by hand, add the plugin to any
+panel that already calls `->login()`:
 
 ```php
 use Arzcode\FilamentMagicLogin\MagicLoginPlugin;
@@ -89,7 +93,9 @@ public function panel(Panel $panel): Panel
 ```
 
 That is the whole setup. The plugin swaps Filament's stock login page for its own subclass, so
-you do not have to create any files. If your panel uses a **custom** login page, see
+you do not have to create any files. The installer only edits a panel provider it can rewrite with
+certainty — a provider that returns its panel from more than one place, for instance, is reported
+and left for you. If your panel uses a **custom** login page, see
 [Using your own login page](#using-your-own-login-page).
 
 ## Configuration

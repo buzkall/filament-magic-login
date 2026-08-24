@@ -5,6 +5,23 @@ All notable changes to `filament-magic-login` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 1.2.0 - 2026-08-24
+
+### Added
+
+- The install command offers to register the plugin on a panel provider for you, appending
+  `->plugin(MagicLoginPlugin::make())` to the chain the provider returns and adding the import.
+  Without this step the rest of the install changes nothing you can see: the table exists, the
+  pruner runs, and no login page ever grows the action. It stays quiet when the plugin is already
+  registered, defaults to *no* so an unattended install never rewrites a provider, and reports any
+  provider it cannot rewrite with certainty instead of guessing at it.
+
+### Changed
+
+- Publishing the config file is now a question like every other install step, instead of the one
+  thing the command did to you unasked. Decline it and the package defaults apply, since the
+  service provider merges them either way.
+
 ## 1.1.0 - 2026-08-24
 
 ### Added

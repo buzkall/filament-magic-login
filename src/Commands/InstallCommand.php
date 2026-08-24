@@ -3,6 +3,7 @@
 namespace Arzcode\FilamentMagicLogin\Commands;
 
 use Arzcode\FilamentMagicLogin\FilamentMagicLoginServiceProvider;
+use Arzcode\FilamentMagicLogin\Support\PluginRegistrationWriter;
 use Arzcode\FilamentMagicLogin\Support\ScheduleWriter;
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
@@ -15,7 +16,8 @@ use function Laravel\Prompts\warning;
 
 /**
  * Publishes what the package needs and offers to wire up the parts an application
- * has to opt into: the migration, and the pruner for the rows it leaves behind.
+ * has to opt into: the migration, the pruner for the rows it leaves behind, and the
+ * plugin registration that puts the action on a panel's login page.
  *
  * Hand-rolled rather than built with spatie's InstallCommand so the whole run reads
  * in one voice — every question goes through Laravel Prompts.
@@ -27,6 +29,7 @@ class InstallCommand extends Command
     public function __construct(
         private readonly Filesystem $filesystem,
         private readonly ScheduleWriter $writer,
+        private readonly PluginRegistrationWriter $registration,
     ) {
         parent::__construct();
 
@@ -42,15 +45,15 @@ class InstallCommand extends Command
         if ($this->usesCacheDriver()) {
             // Cached links carry their own TTL, so there is no table and nothing to prune.
             note(__('filament-magic-login::filament-magic-login.install.cache_driver_skip_migrations'));
-
-            outro(__('filament-magic-login::filament-magic-login.install.done'));
-
-            return static::SUCCESS;
+        } else {
+            $this->publishMigrations();
+            $this->runMigrations();
+            $this->schedulePruning();
         }
 
-        $this->publishMigrations();
-        $this->runMigrations();
-        $this->schedulePruning();
+        // Last, because it is the step that makes the action appear: everything the
+        // panel needs is in place by the time the plugin is registered.
+        $this->registerPlugin();
 
         outro(__('filament-magic-login::filament-magic-login.install.done'));
 
@@ -62,15 +65,31 @@ class InstallCommand extends Command
         return config('filament-magic-login.storage.driver') === FilamentMagicLoginServiceProvider::DRIVER_CACHE;
     }
 
+    /**
+     * The config file is a convenience, not a requirement: the provider merges the
+     * package defaults either way, so this asks rather than assumes.
+     */
     protected function publishConfig(): void
     {
         $published = $this->filesystem->exists(config_path('filament-magic-login.php'));
 
-        if ($published && ! confirm(
-            label: __('filament-magic-login::filament-magic-login.install.config_overwrite'),
-            default: false,
-        )) {
-            note(__('filament-magic-login::filament-magic-login.install.config_kept'));
+        // Overwriting one you have already edited is the destructive answer, so that
+        // question defaults to no; publishing a file that is not there yet does not
+        // take anything away.
+        $confirmed = $published
+            ? confirm(
+                label: __('filament-magic-login::filament-magic-login.install.config_overwrite'),
+                default: false,
+            )
+            : confirm(
+                label: __('filament-magic-login::filament-magic-login.install.config_publish'),
+                default: true,
+            );
+
+        if (! $confirmed) {
+            note(__($published
+                ? 'filament-magic-login::filament-magic-login.install.config_kept'
+                : 'filament-magic-login::filament-magic-login.install.config_skipped'));
 
             return;
         }
@@ -163,6 +182,113 @@ class InstallCommand extends Command
         note(__('filament-magic-login::filament-magic-login.install.schedule_manual'));
 
         $this->line($this->writer->snippet());
+    }
+
+    /**
+     * Nothing else in the install matters until the plugin is on a panel: without it
+     * the table is created, the pruner is scheduled, and no login page ever changes.
+     *
+     * Whether it is registered is read from the application's own source rather than
+     * from the booted panels, because the source is what this command can act on.
+     */
+    protected function registerPlugin(): void
+    {
+        $providers = [];
+
+        foreach ($this->applicationFiles() as $path) {
+            $code = (string) $this->filesystem->get($path);
+
+            if ($this->registration->isRegistered($code)) {
+                note(__('filament-magic-login::filament-magic-login.install.plugin_registered', [
+                    'path' => $this->relative($path),
+                ]));
+
+                return;
+            }
+
+            if ($this->registration->isPanelProvider($code)) {
+                $providers[] = $path;
+            }
+        }
+
+        if ($providers === [] || ! $this->registerPluginIn($providers)) {
+            $this->explainRegistrationByHand();
+        }
+    }
+
+    /**
+     * @param  array<int, string>  $providers
+     * @return bool Whether any provider was actually edited.
+     */
+    protected function registerPluginIn(array $providers): bool
+    {
+        $registered = false;
+
+        foreach ($providers as $path) {
+            // Defaulting to "no" keeps an unattended install from rewriting a provider,
+            // the same guard the pruner question has.
+            if (! confirm(
+                label: __('filament-magic-login::filament-magic-login.install.plugin_prompt', [
+                    'path' => $this->relative($path),
+                ]),
+                default: false,
+            )) {
+                continue;
+            }
+
+            $result = $this->registration->add((string) $this->filesystem->get($path));
+
+            if ($result === null) {
+                warning(__('filament-magic-login::filament-magic-login.install.plugin_failed', [
+                    'path' => $this->relative($path),
+                ]));
+
+                continue;
+            }
+
+            $this->filesystem->put($path, $result);
+
+            note(__('filament-magic-login::filament-magic-login.install.plugin_added', [
+                'path' => $this->relative($path),
+            ]));
+
+            $registered = true;
+        }
+
+        return $registered;
+    }
+
+    protected function explainRegistrationByHand(): void
+    {
+        note(__('filament-magic-login::filament-magic-login.install.plugin_manual'));
+
+        $this->line($this->registration->snippet());
+    }
+
+    /**
+     * The application's own PHP files, which are the only ones this command reads or
+     * edits. Mirrors the roots the uninstall command cleans.
+     *
+     * @return array<int, string>
+     */
+    protected function applicationFiles(): array
+    {
+        $roots = array_filter(
+            [app_path(), base_path('bootstrap'), base_path('routes')],
+            fn (string $path): bool => $this->filesystem->isDirectory($path),
+        );
+
+        $files = [];
+
+        foreach ($roots as $root) {
+            foreach ($this->filesystem->allFiles($root) as $file) {
+                if ($file->getExtension() === 'php') {
+                    $files[] = $file->getRealPath();
+                }
+            }
+        }
+
+        return $files;
     }
 
     protected function publish(string $tag, bool $force = false): void
