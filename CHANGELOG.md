@@ -7,13 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.1.0]
+## 1.0.0 - 2026-08-24
 
 ### Added
 
 - "Email me a login link" action for Filament 5 panels, alongside the password form.
-- Two placements: a full-width uncoloured button below the form (default), or a
-  labelled hint action on the email field.
+- Two placements: a full-width uncoloured button below the form (default), set
+  apart from "Sign in" by an "or" rule, or a labelled hint action on the email
+  field.
 - Single-use, hashed, time-limited tokens bound to a panel and guard.
 - `database` (default) and `cache` storage drivers behind a `TokenRepository` contract.
 - Per-panel plugin configuration with global config fallbacks.
