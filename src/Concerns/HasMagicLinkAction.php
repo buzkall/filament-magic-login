@@ -12,6 +12,7 @@ use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Actions;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Form;
+use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Html;
 
 /**
@@ -30,6 +31,24 @@ trait HasMagicLinkAction
             ->label(fn (): string => $this->getMagicLoginPlugin()->getLabel())
             ->icon('heroicon-o-envelope')
             ->color('gray')
+            // Password managers that sign you in after filling pick a button out of the
+            // login form and click it, ignoring `type="submit"`; a button labelled "email
+            // me a login link" reads to them like a second way in, so a mere autofill used
+            // to send a link nobody asked for. 1Password documents that it clicks with
+            // `element.click()`, and a click no hand made carries `isTrusted: false` — so
+            // the action is mounted from Alpine, behind that check, instead of from
+            // `wire:click`. A real click, and Enter or Space on the focused button, are
+            // trusted and pass straight through.
+            ->alpineClickHandler("\$event.isTrusted && \$wire.mountAction('magicLink')")
+            // Restores the spinner the replaced `wire:click` used to provide.
+            ->livewireTarget('mountAction')
+            // Belt and braces, for the managers that read them.
+            ->extraAttributes([
+                'data-1p-ignore' => 'true',
+                'data-lpignore' => 'true',
+                'data-bwignore' => 'true',
+                'data-form-type' => 'other',
+            ])
             ->action(function (): void {
                 $this->sendMagicLink();
             });
@@ -98,7 +117,12 @@ trait HasMagicLinkAction
 
     /**
      * Places the action on its own row underneath the "Sign in" button, rather than
-     * beside it, by hanging it off the form actions container.
+     * beside it, by wrapping the form and stacking the button after it.
+     *
+     * The wrapper keeps the button *outside* the `<form>` element on purpose: password
+     * managers that fill and submit look for something to click inside the form that owns
+     * the fields they just filled, and this button used to sit right there. Livewire holds
+     * the typed address in the component state, so the action still reads it from out here.
      */
     public function getFormContentComponent(): Component
     {
@@ -112,13 +136,8 @@ trait HasMagicLinkAction
             return $component;
         }
 
-        // A second actions row in the footer, so the button stacks under the first one
-        // and inherits the same width instead of sharing its row.
-        return $component->footer([
-            Actions::make($this->getFormActions())
-                ->alignment($this->getFormActionsAlignment())
-                ->fullWidth($this->hasFullWidthFormActions())
-                ->key('form-actions'),
+        return Group::make([
+            $component,
 
             $this->magicLinkSeparator(),
 
@@ -126,7 +145,11 @@ trait HasMagicLinkAction
                 ->alignment($this->getFormActionsAlignment())
                 ->fullWidth($this->hasFullWidthFormActions())
                 ->key('magic-login-actions'),
-        ]);
+        ])
+            // Mirrors the form's own visibility, so the multi-factor challenge is not
+            // shown alongside a button offering to skip it.
+            ->visible(fn (): bool => $component->isVisible())
+            ->key('magic-login-group');
     }
 
     /**

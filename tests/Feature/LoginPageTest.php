@@ -260,3 +260,67 @@ it('renders the hint action in the page html on the email field', function (): v
         ->assertOk()
         ->assertSee(__('filament-magic-login::filament-magic-login.actions.magic_link'));
 });
+
+/**
+ * A password manager that fills and submits looks for a button to click inside the
+ * form owning the fields it filled, so the magic link button must not live there:
+ * an autofill would silently email a link nobody asked for.
+ */
+it('keeps the action outside the login form element', function (): void {
+    $html = $this->get(Filament::getPanel('admin')->getLoginUrl())
+        ->assertOk()
+        ->getContent();
+
+    expect(strpos($html, "mountAction('magicLink'"))
+        ->toBeGreaterThan(strpos($html, '</form>'));
+});
+
+it('opts the action out of password manager autofill', function (): void {
+    $this->get(Filament::getPanel('admin')->getLoginUrl())
+        ->assertOk()
+        ->assertSee('data-1p-ignore', escape: false)
+        ->assertSee('data-lpignore', escape: false)
+        ->assertSee('data-form-type="other"', escape: false);
+});
+
+/**
+ * 1Password signs you in after filling by clicking a button with `element.click()`,
+ * which produces an untrusted event. The action is mounted from Alpine behind that
+ * check rather than from `wire:click`, so a synthesized click reaches nothing.
+ */
+it('mounts the action only from a trusted click', function (): void {
+    $html = $this->get(Filament::getPanel('admin')->getLoginUrl())
+        ->assertOk()
+        ->getContent();
+
+    expect($html)
+        ->toContain('x-on:click="$event.isTrusted && $wire.mountAction(\'magicLink\')"')
+        ->not->toContain("wire:click=\"mountAction('magicLink'");
+});
+
+it('guards the trusted click on the email field hint too', function (): void {
+    $this->rebootWith(['filament-magic-login.position' => MagicLinkPosition::EmailFieldHint]);
+
+    $html = $this->get(Filament::getPanel('admin')->getLoginUrl())
+        ->assertOk()
+        ->getContent();
+
+    expect($html)
+        ->toContain('x-on:click="$event.isTrusted && $wire.mountAction(\'magicLink\')"')
+        ->not->toContain("wire:click=\"mountAction('magicLink'");
+});
+
+/**
+ * The Alpine handler mounts the action by bare name, without the schema component
+ * context `wire:click` used to carry. This is what breaks first if that changes.
+ */
+it('mounts the action from its name alone', function (): void {
+    $user = makeUser();
+
+    livewire(Login::class)
+        ->fillForm(['email' => $user->email])
+        ->call('mountAction', 'magicLink')
+        ->assertNotified();
+
+    expect(tokenCount())->toBe(1);
+});

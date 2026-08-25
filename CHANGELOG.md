@@ -5,6 +5,23 @@ All notable changes to `filament-magic-login` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 1.3.0 - 2026-08-25
+
+### Fixed
+
+- A password manager filling the login form could send a magic link on its own. Managers that
+  sign you in after filling pick a button out of the login form and click it — ignoring
+  `type="submit"` — and "email me a login link" reads to them like a second way in, so the link
+  went out before anyone touched the button. 1Password documents that it clicks with
+  `element.click()`, which produces an event carrying `isTrusted: false`, so the action is now
+  mounted from an Alpine handler behind that check instead of from `wire:click`: a click no hand
+  made reaches nothing, in both positions. A real click, and Enter or Space on the focused button,
+  are trusted and unaffected.
+- Two further layers behind that one: the below-form button now renders *outside* the `<form>`
+  element (form and button share a wrapper, so nothing moves on screen), and the button carries
+  the opt-out attributes the major extensions read — `data-1p-ignore`, `data-lpignore`,
+  `data-bwignore` and `data-form-type`.
+
 ## 1.2.0 - 2026-08-24
 
 ### Added
