@@ -5,6 +5,45 @@ All notable changes to `filament-magic-login` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 1.4.0 - 2026-08-27
+
+### Added
+
+- An administrator can now email a specific user a login link from inside a panel, choosing how
+  long it lives. `SendMagicLinkAction::make()` serves a table row action and a header action on
+  the View and Edit pages from one class. The expiry is a row of toggle buttons — 15 minutes to
+  three days by default — with a "custom" choice, clamped to a configurable ceiling. The link is
+  only ever emailed to the target user and is never shown to the administrator, so this helps
+  somebody log in rather than logging in as them.
+- Unlike the login page, which stays silent so an anonymous visitor cannot probe which addresses
+  exist, the administrator is told what happened: sent, no email address, cannot access this
+  panel, or too many links sent. The person reading it is authenticated and can already see the
+  users table, so none of those answers tells them anything new. Admin sends are rate limited by
+  administrator, in their own key namespace, so they never eat into the recipient's own allowance
+  for asking on the login page.
+- Per-panel and config options for all of it: `adminExpiresAfter()`, `expiryPresets()`,
+  `maxAdminExpiresAfter()`, `adminRateLimit()` and `adminAbility()`, under a new `admin` block in
+  the config file.
+- The install command offers to add the action to your user resource — its table and the header of
+  each record page — found by comparing each resource's `$model` against the model your panel's
+  guard authenticates. Every question defaults to no, and anything it cannot rewrite with
+  certainty is reported rather than guessed at, the same as every other step. The uninstall
+  command strips the action back out again.
+
+### Changed
+
+- `MagicLinkRequested` gained an optional fourth argument, `$issuedBy`, naming the administrator
+  who sent the link, along with `wasIssuedByAdministrator()`. Backward compatible: no migration,
+  no config change, and existing listeners are untouched. It was added to the existing event
+  rather than shipped as a new one so that nobody's audit log quietly stops seeing half of all
+  issuances.
+
+### Internal
+
+- `SendMagicLink` now delegates minting, storing and emailing to a new `IssueMagicLink`, which the
+  administrator's path shares. Keeping that tail in one place is what stops `invalidate_previous`,
+  the queued-notification swap and the URL shape from drifting between the two entry points.
+
 ## 1.3.0 - 2026-08-25
 
 ### Fixed
