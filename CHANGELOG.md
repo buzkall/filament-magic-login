@@ -33,6 +33,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Every message naming a link's lifetime now says it the way a person would: an hour or less
+  stays in minutes, anything longer becomes hours and days, so a three-day link reads as
+  "expires in 3 days" rather than "expires in 4320 minutes". The three strings that carry it —
+  `messages.sent_body`, `mail.intro` and `admin.sent.body` — take a `:duration` placeholder in
+  place of `:minutes`, which is a breaking change for a published translation of them.
 - `MagicLinkRequested` gained an optional fourth argument, `$issuedBy`, naming the administrator
   who sent the link, along with `wasIssuedByAdministrator()`. Backward compatible: no migration,
   no config change, and existing listeners are untouched. It was added to the existing event

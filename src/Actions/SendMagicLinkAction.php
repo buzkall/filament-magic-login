@@ -4,6 +4,7 @@ namespace Arzcode\FilamentMagicLogin\Actions;
 
 use Arzcode\FilamentMagicLogin\Enums\MagicLinkDeliveryOutcome;
 use Arzcode\FilamentMagicLogin\MagicLoginPlugin;
+use Arzcode\FilamentMagicLogin\Support\ExpiryDuration;
 use Closure;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
@@ -67,23 +68,28 @@ class SendMagicLinkAction extends Action
         // meant for a bare yes/no, which reads badly around a field. These give the same
         // "confirm, and choose how long" modal in a shape that fits one.
         $this->modalHeading(fn (): string => __('filament-magic-login::filament-magic-login.admin.modal.heading'));
-        $this->modalDescription(fn (): string => __('filament-magic-login::filament-magic-login.admin.modal.description', [
-            'user' => $this->getRecipientLabel(),
+        $this->modalDescription(fn (SendMagicLinkAction $action): string => __('filament-magic-login::filament-magic-login.admin.modal.description', [
+            'user' => $action->getRecipientLabel(),
         ]));
         $this->modalIcon('heroicon-o-envelope');
         $this->modalSubmitActionLabel(fn (): string => __('filament-magic-login::filament-magic-login.admin.modal.submit'));
         $this->modalWidth(Width::Large);
 
-        $this->schema(fn (): array => $this->shouldAskForExpiry() ? $this->getExpirySchema() : []);
+        $this->schema(fn (SendMagicLinkAction $action): array => $action->shouldAskForExpiry() ? $action->getExpirySchema() : []);
 
         // hidden() rather than visible(), so an application setting its own ->visible()
         // condition adds to this guard instead of replacing it.
-        $this->hidden(fn (): bool => $this->resolveRecipient() === null);
+        //
+        // Every closure below takes the action as a parameter rather than closing over
+        // $this. A table clones the action once per row and only the clone is given the
+        // row's record, while a closure built here stays bound to the original, whose
+        // record is forever null — which would hide the action from every row.
+        $this->hidden(fn (SendMagicLinkAction $action): bool => $action->resolveRecipient() === null);
 
-        $this->authorize(fn (): bool => $this->passesAbilityCheck());
+        $this->authorize(fn (SendMagicLinkAction $action): bool => $action->passesAbilityCheck());
 
-        $this->action(function (array $data): void {
-            $this->send($data);
+        $this->action(function (SendMagicLinkAction $action, array $data): void {
+            $action->send($data);
         });
     }
 
@@ -373,7 +379,7 @@ class SendMagicLinkAction extends Action
                 ->title(__('filament-magic-login::filament-magic-login.admin.sent.title'))
                 ->body(__('filament-magic-login::filament-magic-login.admin.sent.body', [
                     'user' => $recipient,
-                    'minutes' => $result->expiresAfterMinutes,
+                    'duration' => ExpiryDuration::describe($result->expiresAfterMinutes),
                 ]))
                 ->success()
                 ->send(),

@@ -10,7 +10,7 @@ return [
     'messages' => [
         'email_required' => 'Introdueix primer la teva adreça de correu electrònic.',
         'sent_title' => 'Revisa la teva safata d\'entrada',
-        'sent_body' => 'Si existeix un compte amb aquesta adreça, t\'hem enviat un enllaç d\'accés. Caduca d\'aquí a :minutes minuts.',
+        'sent_body' => 'Si existeix un compte amb aquesta adreça, t\'hem enviat un enllaç d\'accés. Caduca d\'aquí a :duration.',
         'too_many_requests_title' => 'Massa intents',
         'too_many_requests_body' => 'Espera :seconds segons abans de tornar-ho a provar.',
         'invalid_title' => 'Aquest enllaç d\'accés no es pot fer servir',
@@ -25,7 +25,7 @@ return [
     'mail' => [
         'subject' => 'El teu enllaç d\'accés a :app',
         'greeting' => 'Hola!',
-        'intro' => 'Prem el botó de sota per entrar. L\'enllaç caduca d\'aquí a :minutes minuts i només es pot fer servir una vegada.',
+        'intro' => 'Prem el botó de sota per entrar. L\'enllaç caduca d\'aquí a :duration i només es pot fer servir una vegada.',
         'button' => 'Entrar',
         'ignore' => 'Si no has sol·licitat aquest enllaç, pots ignorar aquest correu.',
         'fallback' => 'Si el botó no funciona, copia aquesta URL al teu navegador:',
@@ -55,7 +55,7 @@ return [
         ],
         'sent' => [
             'title' => 'Enllaç d\'accés enviat',
-            'body' => 'S\'ha enviat per correu un enllaç d\'accés a :user. Caduca d\'aquí a :minutes minuts.',
+            'body' => 'S\'ha enviat per correu un enllaç d\'accés a :user. Caduca d\'aquí a :duration.',
         ],
         'no_email' => [
             'title' => 'Sense adreça de correu',

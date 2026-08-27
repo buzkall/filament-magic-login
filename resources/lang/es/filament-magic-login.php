@@ -10,7 +10,7 @@ return [
     'messages' => [
         'email_required' => 'Introduce primero tu dirección de correo electrónico.',
         'sent_title' => 'Revisa tu bandeja de entrada',
-        'sent_body' => 'Si existe una cuenta con esa dirección, te hemos enviado un enlace de acceso. Caduca en :minutes minutos.',
+        'sent_body' => 'Si existe una cuenta con esa dirección, te hemos enviado un enlace de acceso. Caduca en :duration.',
         'too_many_requests_title' => 'Demasiados intentos',
         'too_many_requests_body' => 'Espera :seconds segundos antes de volver a intentarlo.',
         'invalid_title' => 'Este enlace de acceso no se puede usar',
@@ -25,7 +25,7 @@ return [
     'mail' => [
         'subject' => 'Tu enlace de acceso a :app',
         'greeting' => '¡Hola!',
-        'intro' => 'Pulsa el botón de abajo para entrar. El enlace caduca en :minutes minutos y solo se puede usar una vez.',
+        'intro' => 'Pulsa el botón de abajo para entrar. El enlace caduca en :duration y solo se puede usar una vez.',
         'button' => 'Entrar',
         'ignore' => 'Si no has solicitado este enlace, puedes ignorar este correo.',
         'fallback' => 'Si el botón no funciona, copia esta URL en tu navegador:',
@@ -55,7 +55,7 @@ return [
         ],
         'sent' => [
             'title' => 'Enlace de acceso enviado',
-            'body' => 'Se ha enviado por correo un enlace de acceso a :user. Caduca en :minutes minutos.',
+            'body' => 'Se ha enviado por correo un enlace de acceso a :user. Caduca en :duration.',
         ],
         'no_email' => [
             'title' => 'Sin dirección de correo',

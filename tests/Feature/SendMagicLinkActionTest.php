@@ -265,7 +265,8 @@ it('tells the administrator what happened, in every outcome', function (Closure 
                 ->{$status}(),
         );
 })->with([
-    'sent' => [fn () => makeUser(), 'sent', ['minutes' => 60], 'success'],
+    // An hour stays in minutes; only a longer link is cascaded into hours and days.
+    'sent' => [fn () => makeUser(), 'sent', ['duration' => '60 minutes'], 'success'],
     'no email' => [fn () => makeUser(['email' => '', 'name' => 'Nameless Norah']), 'no_email', [], 'danger'],
     'cannot access' => [fn () => makeUser(['can_access' => false]), 'cannot_access', ['panel' => 'admin'], 'danger'],
 ]);
@@ -295,6 +296,23 @@ it('can be hidden by an application without losing its own record guard', functi
 
     livewire(ListUsers::class)
         ->assertActionHidden(TestAction::make('sendMagicLink')->table($target));
+});
+
+it('renders on every row, where the table hands each clone its own record', function (): void {
+    withUserResource();
+
+    $target = makeUser();
+
+    // A table clones the action once per row and gives the record to the clone alone, so
+    // a guard closing over $this reads the original's forever-null record and hides the
+    // action from every row — while still passing an assertion that resolves it by name.
+    $clone = SendMagicLinkAction::make()->getClone();
+    $clone->record($target);
+
+    expect($clone->isHidden())->toBeFalse();
+
+    livewire(ListUsers::class)
+        ->assertSeeHtml("mountAction('sendMagicLink'");
 });
 
 it('is visible by default, and hidden when a configured ability denies it', function (): void {

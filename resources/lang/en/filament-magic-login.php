@@ -10,7 +10,7 @@ return [
     'messages' => [
         'email_required' => 'Enter your email address first.',
         'sent_title' => 'Check your inbox',
-        'sent_body' => 'If an account exists for that address, we\'ve sent a login link. It expires in :minutes minutes.',
+        'sent_body' => 'If an account exists for that address, we\'ve sent a login link. It expires in :duration.',
         'too_many_requests_title' => 'Too many attempts',
         'too_many_requests_body' => 'Please wait :seconds seconds before trying again.',
         'invalid_title' => 'That login link can\'t be used',
@@ -25,7 +25,7 @@ return [
     'mail' => [
         'subject' => 'Your login link for :app',
         'greeting' => 'Hello!',
-        'intro' => 'Click the button below to sign in. The link expires in :minutes minutes and can only be used once.',
+        'intro' => 'Click the button below to sign in. The link expires in :duration and can only be used once.',
         'button' => 'Sign in',
         'ignore' => 'If you didn\'t request this, you can safely ignore this email.',
         'fallback' => 'If the button doesn\'t work, copy this URL into your browser:',
@@ -55,7 +55,7 @@ return [
         ],
         'sent' => [
             'title' => 'Login link sent',
-            'body' => 'A login link has been emailed to :user. It expires in :minutes minutes.',
+            'body' => 'A login link has been emailed to :user. It expires in :duration.',
         ],
         'no_email' => [
             'title' => 'No email address',

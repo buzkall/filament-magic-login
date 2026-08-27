@@ -5,6 +5,7 @@ namespace Arzcode\FilamentMagicLogin\Concerns;
 use Arzcode\FilamentMagicLogin\Actions\SendMagicLink;
 use Arzcode\FilamentMagicLogin\Enums\MagicLinkPosition;
 use Arzcode\FilamentMagicLogin\MagicLoginPlugin;
+use Arzcode\FilamentMagicLogin\Support\ExpiryDuration;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\TextInput;
@@ -83,7 +84,7 @@ trait HasMagicLinkAction
         Notification::make()
             ->title(__('filament-magic-login::filament-magic-login.messages.sent_title'))
             ->body(__('filament-magic-login::filament-magic-login.messages.sent_body', [
-                'minutes' => $this->getMagicLoginPlugin()->getExpiresAfterMinutes(),
+                'duration' => ExpiryDuration::describe($this->getMagicLoginPlugin()->getExpiresAfterMinutes()),
             ]))
             ->success()
             ->send();
