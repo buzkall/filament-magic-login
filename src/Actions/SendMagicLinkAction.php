@@ -5,16 +5,19 @@ namespace Arzcode\FilamentMagicLogin\Actions;
 use Arzcode\FilamentMagicLogin\Enums\MagicLinkDeliveryOutcome;
 use Arzcode\FilamentMagicLogin\MagicLoginPlugin;
 use Arzcode\FilamentMagicLogin\Support\ExpiryDuration;
+use BackedEnum;
 use Closure;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\ToggleButtons;
+use Filament\Models\Contracts\FilamentUser;
 use Filament\Notifications\Notification;
 use Filament\Panel;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Enums\Width;
 use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\Gate;
 use LogicException;
 
@@ -32,6 +35,11 @@ use LogicException;
 class SendMagicLinkAction extends Action
 {
     protected string|Closure|null $panelId = null;
+
+    /** @var array<int, string>|Closure|null */
+    protected array|Closure|null $panelIds = null;
+
+    protected bool|Closure $usesAnyPanel = false;
 
     protected int|Closure|null $expiresAfterMinutes = null;
 
@@ -56,7 +64,7 @@ class SendMagicLinkAction extends Action
         parent::setUp();
 
         $this->label(fn (): string => __('filament-magic-login::filament-magic-login.admin.label'));
-        $this->icon('heroicon-o-envelope');
+        $this->icon(fn (SendMagicLinkAction $action): string|BackedEnum|Htmlable|null => $action->getPlugin()->getAdminIcon());
         $this->color('gray');
 
         // In a table row the action shows as an icon button (see getView()), which has no
@@ -68,10 +76,8 @@ class SendMagicLinkAction extends Action
         // meant for a bare yes/no, which reads badly around a field. These give the same
         // "confirm, and choose how long" modal in a shape that fits one.
         $this->modalHeading(fn (): string => __('filament-magic-login::filament-magic-login.admin.modal.heading'));
-        $this->modalDescription(fn (SendMagicLinkAction $action): string => __('filament-magic-login::filament-magic-login.admin.modal.description', [
-            'user' => $action->getRecipientLabel(),
-        ]));
-        $this->modalIcon('heroicon-o-envelope');
+        $this->modalDescription(fn (SendMagicLinkAction $action): string => $action->describeSend());
+        $this->modalIcon(fn (SendMagicLinkAction $action): string|BackedEnum|Htmlable|null => $action->getPlugin()->getAdminIcon());
         $this->modalSubmitActionLabel(fn (): string => __('filament-magic-login::filament-magic-login.admin.modal.submit'));
         $this->modalWidth(Width::Large);
 
@@ -84,7 +90,7 @@ class SendMagicLinkAction extends Action
         // $this. A table clones the action once per row and only the clone is given the
         // row's record, while a closure built here stays bound to the original, whose
         // record is forever null — which would hide the action from every row.
-        $this->hidden(fn (SendMagicLinkAction $action): bool => $action->resolveRecipient() === null);
+        $this->hidden(fn (SendMagicLinkAction $action): bool => ! $action->canReceiveMagicLink());
 
         $this->authorize(fn (SendMagicLinkAction $action): bool => $action->passesAbilityCheck());
 
@@ -110,6 +116,31 @@ class SendMagicLinkAction extends Action
     }
 
     /**
+     * Whatever the icon turns out to be — ours, or a name an application handed to
+     * Filament's own `->icon()` — is checked before it reaches the renderer. Blade Icons
+     * throws SvgNotFound for a name no set has, and an icon in a table row is drawn
+     * inside the page: a typo there is a 500 on the whole users table rather than a
+     * missing glyph. Falling back to the panel's own icon keeps a typo cosmetic.
+     */
+    public function getIcon(string|BackedEnum|Htmlable|null $default = null): string|BackedEnum|Htmlable|null
+    {
+        return $this->rescueIcon(parent::getIcon($default));
+    }
+
+    public function getModalIcon(): string|BackedEnum|Htmlable|null
+    {
+        return $this->rescueIcon(parent::getModalIcon());
+    }
+
+    protected function rescueIcon(string|BackedEnum|Htmlable|null $icon): string|BackedEnum|Htmlable|null
+    {
+        return $this->getPlugin()->resolveIcon(
+            $icon,
+            fn (): string|BackedEnum|Htmlable|null => $this->getPlugin()->getAdminIcon(),
+        );
+    }
+
+    /**
      * Not hasTable(): that only arrived in a later 5.x, and the package supports ^5.0.
      */
     public function isInTable(): bool
@@ -122,6 +153,37 @@ class SendMagicLinkAction extends Action
         $this->panelId = $panelId;
 
         return $this;
+    }
+
+    /**
+     * Panels to consider, most preferred first: the link is minted for the first one the
+     * user can actually reach. A contractor who is only in your `app` panel gets an app
+     * link from the admin panel's users table, without you having to know which of them
+     * that is per row.
+     *
+     * @param  array<int, string>|Closure|null  $panelIds
+     */
+    public function panels(array|Closure|null $panelIds): static
+    {
+        $this->panelIds = $panelIds;
+
+        return $this;
+    }
+
+    /**
+     * The same, over every panel that registers the plugin — the current one first, so a
+     * user who can reach both is sent where the administrator is standing.
+     */
+    public function anyPanel(bool|Closure $condition = true): static
+    {
+        $this->usesAnyPanel = $condition;
+
+        return $this;
+    }
+
+    public function usesAnyPanel(): bool
+    {
+        return (bool) $this->evaluate($this->usesAnyPanel);
     }
 
     public function expiresAfter(int|Closure|null $minutes): static
@@ -167,13 +229,85 @@ class SendMagicLinkAction extends Action
         return (bool) $this->evaluate($this->asksForExpiry);
     }
 
-    public function getTargetPanel(): Panel
+    /**
+     * The panels this action will consider, most preferred first. One, unless the
+     * application named more.
+     *
+     * @return array<int, Panel>
+     */
+    public function getCandidatePanels(): array
     {
         $id = $this->evaluate($this->panelId);
 
-        return filled($id)
-            ? Filament::getPanel((string) $id)
-            : Filament::getCurrentOrDefaultPanel();
+        if (filled($id)) {
+            return [Filament::getPanel((string) $id)];
+        }
+
+        /** @var array<int, mixed>|null $ids */
+        $ids = $this->evaluate($this->panelIds);
+
+        if (filled($ids)) {
+            return array_values(array_map(
+                fn (mixed $id): Panel => Filament::getPanel((string) $id),
+                $ids,
+            ));
+        }
+
+        if ($this->usesAnyPanel()) {
+            return $this->getPanelsWithThePlugin();
+        }
+
+        return [Filament::getCurrentOrDefaultPanel()];
+    }
+
+    /**
+     * The panel the link is minted for, which is not always the one the action renders
+     * in: ->panel('app') is how an admin panel sends somebody a link for another panel,
+     * and ->panels() / ->anyPanel() let the recipient's own access decide which.
+     *
+     * Falls back to the first candidate when none will have them, so the settings and
+     * the modal still resolve for an action that is hidden anyway.
+     */
+    public function getTargetPanel(): Panel
+    {
+        $candidates = $this->getCandidatePanels();
+
+        $user = $this->resolveRecipient();
+
+        foreach ($candidates as $panel) {
+            if ($user === null || $this->admits($panel, $user)) {
+                return $panel;
+            }
+        }
+
+        return $candidates[0] ?? Filament::getCurrentOrDefaultPanel();
+    }
+
+    /**
+     * Every panel that could mint a link, the current one first. Panels without the
+     * plugin are skipped rather than thrown over: this list is inferred, not named.
+     *
+     * @return array<int, Panel>
+     */
+    protected function getPanelsWithThePlugin(): array
+    {
+        $current = Filament::getCurrentOrDefaultPanel();
+
+        $panels = array_filter(
+            Filament::getPanels(),
+            fn (Panel $panel): bool => $panel->getId() !== $current->getId()
+                && $panel->hasPlugin(MagicLoginPlugin::ID),
+        );
+
+        return [
+            ...($current->hasPlugin(MagicLoginPlugin::ID) ? [$current] : []),
+            ...array_values($panels),
+        ];
+    }
+
+    protected function admits(Panel $panel, Authenticatable $user): bool
+    {
+        return (! $user instanceof FilamentUser) || $user->canAccessPanel($panel);
     }
 
     public function getDefaultExpiresAfterMinutes(): int
@@ -219,9 +353,8 @@ class SendMagicLinkAction extends Action
     }
 
     /**
-     * The panel the link is minted for, which is not always the one the action renders
-     * in: ->panel('app') is how an admin panel sends somebody a link for another panel.
-     * Every setting below is read from that panel, never from the current one.
+     * Every setting is read from the panel the link is minted for, never from the
+     * current one.
      */
     protected function getPlugin(): MagicLoginPlugin
     {
@@ -236,11 +369,80 @@ class SendMagicLinkAction extends Action
         return MagicLoginPlugin::for($panel);
     }
 
+    /**
+     * Whether a link sent from here could actually let this record in: it has to be
+     * something that can be authenticated, it must not be the administrator sending it,
+     * and the *target* panel — the one named by ->panel(), not necessarily the one being
+     * looked at — has to admit it.
+     *
+     * A user the panel would turn away is hidden rather than refused on submit, because
+     * the answer is known while the row is being drawn and there is nothing the
+     * administrator could do about it. The refusal in SendMagicLinkToUser stays as the
+     * backstop for every other caller, and for access revoked after the page was drawn.
+     */
+    public function canReceiveMagicLink(): bool
+    {
+        $user = $this->resolveRecipient();
+
+        if ($user === null) {
+            return false;
+        }
+
+        if ($this->isRecipientTheCurrentUser()) {
+            return false;
+        }
+
+        // getTargetPanel() already answers with a panel that admits them where there is
+        // one, so this is only ever false when no candidate would.
+        return $this->admits($this->getTargetPanel(), $user);
+    }
+
+    /**
+     * Somebody already signed in has no use for a link into their own inbox to get where
+     * they already are, so their own row does not offer one.
+     */
+    protected function isRecipientTheCurrentUser(): bool
+    {
+        $user = $this->resolveRecipient();
+        $current = Filament::auth()->user();
+
+        if ($user === null || $current === null) {
+            return false;
+        }
+
+        // Loosely on the identifier, and only within the same class: a key read back
+        // from a route parameter arrives as a string where the signed-in user's is an
+        // integer, and PHP 8 no longer compares those two the surprising way.
+        return $user::class === $current::class
+            && $user->getAuthIdentifier() == $current->getAuthIdentifier();
+    }
+
     protected function resolveRecipient(): ?Authenticatable
     {
         $record = $this->getRecord();
 
         return $record instanceof Authenticatable ? $record : null;
+    }
+
+    /**
+     * Names the panel whenever it is not the one being looked at, because with
+     * ->panels() the answer is the recipient's to decide and differs row by row.
+     */
+    protected function describeSend(): string
+    {
+        $description = __('filament-magic-login::filament-magic-login.admin.modal.description', [
+            'user' => $this->getRecipientLabel(),
+        ]);
+
+        $panel = $this->getTargetPanel();
+
+        if ($panel->getId() === Filament::getCurrentOrDefaultPanel()->getId()) {
+            return $description;
+        }
+
+        return $description.' '.__('filament-magic-login::filament-magic-login.admin.modal.panel', [
+            'panel' => $panel->getId(),
+        ]);
     }
 
     protected function getRecipientLabel(): string

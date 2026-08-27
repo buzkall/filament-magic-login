@@ -36,6 +36,7 @@ return [
         'modal' => [
             'heading' => 'Enviar un enlace de acceso',
             'description' => 'Se enviará por correo a :user un enlace de acceso de un solo uso. Aquí nunca se muestra.',
+            'panel' => 'Le da acceso al panel [:panel].',
             'submit' => 'Enviar el enlace',
         ],
         'field' => [

@@ -159,15 +159,40 @@ Three things worth being explicit about:
 | Fluent method | Default | What it does |
 |---|---|---|
 | `panel(string\|Closure\|null)` | the current panel | Which panel the link is minted for. |
+| `panels(array\|Closure\|null)` | — | Panels to consider, best first: the first one the user can reach wins. |
+| `anyPanel(bool\|Closure)` | `false` | The same, over every panel that registers the plugin. |
 | `expiresAfter(int\|Closure\|null)` | `admin.expires_after_minutes` | Which choice is pre-selected. |
 | `maxExpiresAfter(int\|Closure\|null)` | `admin.max_expires_after_minutes` | Ceiling for this placement. |
 | `expiryPresets(array\|Closure\|null)` | `admin.expiry_presets` | The buttons offered, in minutes. |
 | `askForExpiry(bool\|Closure)` | `true` | `false` sends at the default with no field. |
 | `ability(string\|Closure\|null)` | `admin.ability` | Gate ability checked against the target user. |
+| `icon(string\|Closure\|null)` | `admin.icon`, then `icon` | Icon for this placement. Filament's own method. |
 
 Everything `Filament\Actions\Action` offers works as usual — `->label()`, `->icon()`,
 `->visible()`, `->authorize()`, `->after()`. To change the wording of the confirmations, override
 `->action()`.
+
+The envelope is the default icon in all three placements, and in the modal. Change it once for the
+whole panel on the plugin, or per placement on the action:
+
+```php
+MagicLoginPlugin::make()->adminIcon('heroicon-o-key')   // action and modal, every placement
+MagicLoginPlugin::make()->icon('heroicon-o-key')        // the login page's action too
+
+SendMagicLinkAction::make()->icon('heroicon-o-key')     // this placement only
+```
+
+Pass `false` to either plugin method for no icon at all. `adminIcon()` follows `icon()` when you
+have not set it, so an application that wants one icon everywhere says so once. Both take a
+`BackedEnum` — `Heroicon::Key` — as readily as a string.
+
+A name no icon set has falls back down that same chain rather than rendering: `heroicon-s-email`
+is not a heroicon, and a typo like that would otherwise be a `SvgNotFound` — an error page on the
+whole users table, from one string in a config file. That check runs on whatever the icon turns
+out to be, including a name passed to Filament's own `->icon()` on the action, and logs the
+fallback once so the icon quietly being the envelope again is at least explained in `laravel.log`.
+It covers this action only: a bad icon name on any other action in your table is still Filament's
+error to throw.
 
 ### Who may send a link
 
@@ -195,13 +220,63 @@ The default is not that, on purpose: Laravel's Gate denies an ability no policy 
 shipping `'sendMagicLink'` as the default would make the action vanish in every application that
 installed it.
 
-**If you run more than one panel, set `admin.ability`.** `->panel('app')` lets an administrator of
-one panel mint a login credential for another, which is the feature working as intended and
-exactly the case worth gating.
+**If you run more than one panel, set `admin.ability`.** `->panel('app')`, `->panels([...])` and
+`->anyPanel()` all let an administrator of one panel mint a login credential for another, which is
+the feature working as intended and exactly the case worth gating.
 
-Two guards are always on regardless: the action hides itself when the record is not something that
-can be authenticated, and a user who fails `canAccessPanel()` on the target panel is refused
-outright — an administrator cannot mint a working credential for someone the panel would turn away.
+Three guards are always on regardless. The action hides itself when the record is not something
+that can be authenticated, when the record is the administrator's own row — somebody already
+signed in has no use for a link to where they already are — and when the user fails
+`canAccessPanel()` on the target panel. A link the panel would turn away at the door is not worth
+offering, and there is nothing the administrator could do about it anyway.
+`SendMagicLinkToUser` refuses that last one too, which is what covers access revoked between the
+page being drawn and the modal being submitted.
+
+Note that "the target panel" is the one the link is minted for, not the one you are looking at. A
+user who cannot reach your admin panel but can reach your `app` panel gets no action on the admin
+panel's users table by default — and does get one where you have said which panel to mint for:
+
+```php
+SendMagicLinkAction::make()->panel('app')
+```
+
+### One action, several panels
+
+Naming one panel per placement only works when you know which panel each user belongs to. Where a
+users table mixes them — staff in the admin panel, clients in `app` — hand the action a list
+instead, best first. The link is minted for the first panel that row's user can actually reach:
+
+```php
+SendMagicLinkAction::make()->panels(['admin', 'app'])
+```
+
+So a colleague gets an admin-panel link, a client gets an app one, and someone in both is sent
+where you are standing, because `admin` comes first in the list. `->anyPanel()` is the same over
+every panel that registers the plugin, current panel first, for when you would rather not keep the
+list up to date:
+
+```php
+SendMagicLinkAction::make()->anyPanel()
+```
+
+Where the panel is not the one you are looking at, the confirmation modal says which one it is, so
+"send a login link" never quietly means a different door than the administrator expects. The
+per-send settings — the lifetime, the presets, the ceiling, the rate limit — are read from that
+panel too, not from the one you are on.
+
+Two placements can still sit side by side where you want the choice to be yours rather than the
+recipient's, each showing only for the users its own panel would admit:
+
+```php
+->recordActions([
+    SendMagicLinkAction::make('sendAdminLink')->panel('admin'),
+    SendMagicLinkAction::make('sendAppLink')->panel('app')->label('Send an app login link'),
+])
+```
+
+Every panel you name has to register the plugin — `->anyPanel()` skips the ones that do not, since
+that list is inferred rather than named. `canAccessPanel()` is called for each candidate panel,
+once per row per action, so keep it cheap (or eager-load whatever it reads) on a large table.
 
 A note on the link itself: the consume route is behind `guest:` middleware, so an administrator who
 is signed in and clicks the link they just sent is redirected to the panel home **without**
@@ -219,6 +294,7 @@ on the plugin. Panel-level setters win; anything you do not set falls back to co
 | `expiresAfter(int\|Closure $minutes)` | `expires_after_minutes` | `15` | Link lifetime. |
 | `position(MagicLinkPosition\|Closure)` | `position` | `BelowForm` | Where the action renders. |
 | `label(string\|Closure\|null)` | — | from translations | Action label. |
+| `icon(string\|BackedEnum\|Closure\|false\|null)` | `icon` | `heroicon-o-envelope` | Icon on the login page's action. `false` removes it, and a name no icon set has falls back to the default. |
 | `notification(class-string\|Closure)` | `notification` | `MagicLinkNotification` | Notification used to deliver the link. |
 | `rateLimit(int $maxAttempts, int $decaySeconds)` | `rate_limit.*` | `3` / `300` | Limits link *requests*, keyed by email + IP. |
 | `consumeRateLimit(int $maxAttempts, int $decaySeconds)` | `consume_rate_limit.*` | `10` / `60` | Limits link *consumption*, keyed by IP. |
@@ -232,6 +308,7 @@ on the plugin. Panel-level setters win; anything you do not set falls back to co
 | `maxAdminExpiresAfter(int\|Closure)` | `admin.max_expires_after_minutes` | `4320` (3 days) | Ceiling for an admin-chosen expiry. |
 | `adminRateLimit(int $maxAttempts, int $decaySeconds)` | `admin.rate_limit.*` | `10` / `60` | Limits admin-issued links, keyed by the administrator. `0` disables it. |
 | `adminAbility(string\|Closure\|null)` | `admin.ability` | `null` | Gate ability required to send a link. |
+| `adminIcon(string\|BackedEnum\|Closure\|false\|null)` | `admin.icon` | follows `icon` | Icon on the "send a login link" action and its modal. `false` removes it. |
 | — | `queue` | `true` | Send the shipped notification on the queue. |
 | — | `storage.driver` | `database` | `database` or `cache`. Global only, not per panel. |
 | — | `blur_timing` | `true` | Pad unknown-address responses so timing does not leak account existence. |
@@ -394,8 +471,8 @@ them for you to delete, the same as any other code you wrote by hand.
   redeems the link exactly once.
 - **Panel and guard bound.** A token minted for one panel is rejected on every other panel, and a
   guard mismatch is rejected outright.
-- **`canAccessPanel()` is honoured** both when issuing and when redeeming, so access revoked after
-  a link was sent still blocks the login.
+- **`canAccessPanel()` is honoured** when the admin action is drawn, when a link is issued and
+  when it is redeemed, so access revoked after a link was sent still blocks the login.
 - **No user enumeration.** Unknown addresses, users who cannot access the panel and rate-limited
   requests all produce the same confirmation message, and unknown addresses are padded in time.
 - **Rate limited on both sides**: requests by email + IP, redemptions by IP.

@@ -7,6 +7,8 @@ use Arzcode\FilamentMagicLogin\Contracts\MagicLinkNotification as MagicLinkNotif
 use Arzcode\FilamentMagicLogin\Enums\MagicLinkPosition;
 use Arzcode\FilamentMagicLogin\Http\Controllers\ConsumeMagicLinkController;
 use Arzcode\FilamentMagicLogin\Pages\Login;
+use BackedEnum;
+use BladeUI\Icons\Factory as IconFactory;
 use Closure;
 use Filament\Auth\Pages\Login as BaseLogin;
 use Filament\Contracts\Plugin;
@@ -15,10 +17,12 @@ use Filament\Panel;
 use Filament\PanelRegistry;
 use Filament\Support\Concerns\EvaluatesClosures;
 use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\Route;
 use Livewire\Finder\Finder;
 use Livewire\Livewire;
 use LogicException;
+use Throwable;
 
 class MagicLoginPlugin implements Plugin
 {
@@ -26,11 +30,15 @@ class MagicLoginPlugin implements Plugin
 
     public const ID = 'magic-login';
 
+    public const DEFAULT_ICON = 'heroicon-o-envelope';
+
     protected int|Closure|null $expiresAfterMinutes = null;
 
     protected MagicLinkPosition|Closure|null $position = null;
 
     protected string|Closure|null $label = null;
+
+    protected string|BackedEnum|Closure|false|null $icon = null;
 
     /** @var class-string<MagicLinkNotificationContract>|Closure|null */
     protected string|Closure|null $notification = null;
@@ -64,7 +72,16 @@ class MagicLoginPlugin implements Plugin
 
     protected string|Closure|null $adminAbility = null;
 
+    protected string|BackedEnum|Closure|false|null $adminIcon = null;
+
     protected bool|Closure $usesCustomLoginPage = false;
+
+    /**
+     * Answers from the icon set, which cannot change within a request.
+     *
+     * @var array<string, bool>
+     */
+    protected static array $knownIcons = [];
 
     public static function make(): static
     {
@@ -135,6 +152,16 @@ class MagicLoginPlugin implements Plugin
     public function label(string|Closure|null $label): static
     {
         $this->label = $label;
+
+        return $this;
+    }
+
+    /**
+     * Icon on the login page's action. `false` removes it.
+     */
+    public function icon(string|BackedEnum|Closure|false|null $icon): static
+    {
+        $this->icon = $icon;
 
         return $this;
     }
@@ -237,6 +264,17 @@ class MagicLoginPlugin implements Plugin
     }
 
     /**
+     * Icon on the "send a login link" action and its modal, in every placement.
+     * Null follows `icon()`; `false` removes it.
+     */
+    public function adminIcon(string|BackedEnum|Closure|false|null $icon): static
+    {
+        $this->adminIcon = $icon;
+
+        return $this;
+    }
+
+    /**
      * Skip login page detection entirely: the panel's own login page is left alone.
      */
     public function useCustomLoginPage(bool|Closure $condition = true): static
@@ -264,6 +302,28 @@ class MagicLoginPlugin implements Plugin
     {
         return (string) ($this->evaluate($this->label)
             ?? __('filament-magic-login::filament-magic-login.actions.magic_link'));
+    }
+
+    public function getIcon(): string|BackedEnum|Htmlable|null
+    {
+        $icon = $this->evaluate($this->icon) ?? config('filament-magic-login.icon', static::DEFAULT_ICON);
+
+        return $this->resolveIcon($icon, fn (): ?string => $this->iconExists(static::DEFAULT_ICON) ? static::DEFAULT_ICON : null);
+    }
+
+    /**
+     * Three steps, as with the admin expiry: an application that only sets `->icon()`
+     * gets that icon on the admin action too, without saying so twice.
+     */
+    public function getAdminIcon(): string|BackedEnum|Htmlable|null
+    {
+        $icon = $this->evaluate($this->adminIcon) ?? config('filament-magic-login.admin.icon');
+
+        // A name no icon set has falls through the same chain as an unset one, so a typo
+        // costs the icon rather than the page.
+        return $icon === null
+            ? $this->getIcon()
+            : $this->resolveIcon($icon, fn (): string|BackedEnum|Htmlable|null => $this->getIcon());
     }
 
     /**
@@ -379,6 +439,64 @@ class MagicLoginPlugin implements Plugin
     public function usesCustomLoginPage(): bool
     {
         return (bool) $this->evaluate($this->usesCustomLoginPage);
+    }
+
+    /**
+     * An icon that can actually be rendered: the one asked for, or the fallback when no
+     * registered icon set has that name. Public because the action runs whatever an
+     * application passed to Filament's own `->icon()` through it too.
+     *
+     * @param  Closure(): (string|BackedEnum|Htmlable|null)  $fallback
+     */
+    public function resolveIcon(mixed $icon, Closure $fallback): string|BackedEnum|Htmlable|null
+    {
+        if ($icon === false || blank($icon)) {
+            return null;
+        }
+
+        // An enum names a case the compiler checked, and anything else Filament renders
+        // (an Htmlable, an image path) is not a name in an icon set to begin with.
+        if (! is_string($icon)) {
+            return $icon;
+        }
+
+        if ($this->iconExists($icon)) {
+            return $icon;
+        }
+
+        logger()->warning('filament-magic-login: no icon named ['.$icon.'] in any registered icon set, falling back to the default.');
+
+        return $fallback();
+    }
+
+    /**
+     * Whether Blade Icons can render this name. A name it cannot is an SvgNotFound at
+     * render time — a 500 on the users table for a typo in a config file — so it is
+     * asked here instead, once per name per request.
+     */
+    protected function iconExists(string $icon): bool
+    {
+        // An image path is not a set name: Filament renders it as an <img> and never
+        // asks Blade Icons about it.
+        if (str_contains($icon, '/')) {
+            return true;
+        }
+
+        if (! class_exists(IconFactory::class)) {
+            return true;
+        }
+
+        if (array_key_exists($icon, static::$knownIcons)) {
+            return static::$knownIcons[$icon];
+        }
+
+        try {
+            app(IconFactory::class)->svg($icon);
+
+            return static::$knownIcons[$icon] = true;
+        } catch (Throwable) {
+            return static::$knownIcons[$icon] = false;
+        }
     }
 
     /**

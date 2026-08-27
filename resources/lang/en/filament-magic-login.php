@@ -36,6 +36,7 @@ return [
         'modal' => [
             'heading' => 'Send a login link',
             'description' => 'A single-use login link will be emailed to :user. It is never shown here.',
+            'panel' => 'It signs them into the [:panel] panel.',
             'submit' => 'Send the link',
         ],
         'field' => [

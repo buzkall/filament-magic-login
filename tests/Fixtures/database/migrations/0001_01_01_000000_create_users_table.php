@@ -14,6 +14,7 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->string('password');
             $table->boolean('can_access')->default(true);
+            $table->json('can_access_panels')->nullable();
             $table->rememberToken();
             $table->timestamps();
         });

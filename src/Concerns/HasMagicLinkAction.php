@@ -6,6 +6,7 @@ use Arzcode\FilamentMagicLogin\Actions\SendMagicLink;
 use Arzcode\FilamentMagicLogin\Enums\MagicLinkPosition;
 use Arzcode\FilamentMagicLogin\MagicLoginPlugin;
 use Arzcode\FilamentMagicLogin\Support\ExpiryDuration;
+use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\TextInput;
@@ -15,6 +16,7 @@ use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Form;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Html;
+use Illuminate\Contracts\Support\Htmlable;
 
 /**
  * Adds the "email me a login link" action to a Filament login page.
@@ -30,7 +32,7 @@ trait HasMagicLinkAction
 
         $action = Action::make('magicLink')
             ->label(fn (): string => $this->getMagicLoginPlugin()->getLabel())
-            ->icon('heroicon-o-envelope')
+            ->icon(fn (): string|BackedEnum|Htmlable|null => $this->getMagicLoginPlugin()->getIcon())
             ->color('gray')
             // Password managers that sign you in after filling pick a button out of the
             // login form and click it, ignoring `type="submit"`; a button labelled "email

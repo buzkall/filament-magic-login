@@ -268,8 +268,203 @@ it('tells the administrator what happened, in every outcome', function (Closure 
     // An hour stays in minutes; only a longer link is cascaded into hours and days.
     'sent' => [fn () => makeUser(), 'sent', ['duration' => '60 minutes'], 'success'],
     'no email' => [fn () => makeUser(['email' => '', 'name' => 'Nameless Norah']), 'no_email', [], 'danger'],
-    'cannot access' => [fn () => makeUser(['can_access' => false]), 'cannot_access', ['panel' => 'admin'], 'danger'],
 ]);
+
+it('hides itself from a user the target panel would turn away', function (): void {
+    withUserResource();
+
+    $target = makeUser(['can_access' => false]);
+
+    livewire(ListUsers::class)
+        ->assertActionHidden(TestAction::make('sendMagicLink')->table($target));
+
+    livewire(EditUser::class, ['record' => $target->getKey()])
+        ->assertActionHidden('sendMagicLink');
+
+    livewire(ViewUser::class, ['record' => $target->getKey()])
+        ->assertActionHidden('sendMagicLink');
+});
+
+it('asks the panel the link is minted for, not the one being looked at', function (): void {
+    withUserResource();
+
+    // Reaches the app panel and nothing else — so an admin-panel link would be useless
+    // to them, while an app-panel one is exactly what they need.
+    $target = makeUser(['can_access_panels' => ['app']]);
+
+    livewire(ListUsers::class)
+        ->assertActionHidden(TestAction::make('sendMagicLink')->table($target));
+
+    ViewUser::$configureAction = fn (SendMagicLinkAction $action) => $action->panel('app');
+
+    livewire(ViewUser::class, ['record' => $target->getKey()])
+        ->assertActionVisible('sendMagicLink')
+        ->callAction('sendMagicLink', ['expires_preset' => '60'])
+        ->assertHasNoActionErrors();
+
+    expect(app(TokenRepository::class)->unusedFor($target, 'app'))->toHaveCount(1);
+});
+
+it('does not offer the administrator a link to their own inbox', function (): void {
+    withUserResource();
+
+    $admin = makeUser(['name' => 'Administrator']);
+
+    test()->actingAs($admin, 'web');
+
+    livewire(ListUsers::class)
+        ->assertActionHidden(TestAction::make('sendMagicLink')->table($admin))
+        // Everybody else still gets one.
+        ->assertActionVisible(TestAction::make('sendMagicLink')->table(makeUser()));
+
+    livewire(EditUser::class, ['record' => $admin->getKey()])
+        ->assertActionHidden('sendMagicLink');
+});
+
+it('mints for the first panel in the list the user can actually reach', function (): void {
+    withUserResource();
+
+    UsersTable::$configureAction = fn (SendMagicLinkAction $action) => $action->panels(['admin', 'app']);
+
+    $client = makeUser(['can_access_panels' => ['app']]);
+
+    livewire(ListUsers::class)
+        ->assertActionVisible(TestAction::make('sendMagicLink')->table($client))
+        ->callAction(TestAction::make('sendMagicLink')->table($client), ['expires_preset' => '60'])
+        ->assertHasNoActionErrors();
+
+    expect(app(TokenRepository::class)->unusedFor($client, 'app'))->toHaveCount(1)
+        ->and(app(TokenRepository::class)->unusedFor($client, 'admin'))->toBeEmpty();
+
+    // Somebody who is in both is sent where the administrator is standing, because the
+    // admin panel comes first in the list.
+    $staff = makeUser(['can_access_panels' => ['admin', 'app']]);
+
+    livewire(ListUsers::class)
+        ->callAction(TestAction::make('sendMagicLink')->table($staff), ['expires_preset' => '60'])
+        ->assertHasNoActionErrors();
+
+    expect(app(TokenRepository::class)->unusedFor($staff, 'admin'))->toHaveCount(1);
+});
+
+it('stays hidden when none of the named panels would have them', function (): void {
+    withUserResource();
+
+    UsersTable::$configureAction = fn (SendMagicLinkAction $action) => $action->panels(['admin', 'app']);
+
+    livewire(ListUsers::class)
+        ->assertActionHidden(TestAction::make('sendMagicLink')->table(makeUser(['can_access' => false])));
+});
+
+it('searches every panel that registers the plugin when asked to', function (): void {
+    TestCase::$registerPluginlessPanel = true;
+
+    withUserResource();
+
+    ViewUser::$configureAction = fn (SendMagicLinkAction $action) => $action->anyPanel();
+
+    $client = makeUser(['can_access_panels' => ['app']]);
+
+    livewire(ViewUser::class, ['record' => $client->getKey()])
+        ->assertActionVisible('sendMagicLink')
+        ->callAction('sendMagicLink', ['expires_preset' => '60'])
+        ->assertHasNoActionErrors();
+
+    expect(app(TokenRepository::class)->unusedFor($client, 'app'))->toHaveCount(1);
+});
+
+it('names the panel in the modal only when it is not the one being looked at', function (): void {
+    withUserResource();
+
+    $panelNamed = fn (string $panel): string => __('filament-magic-login::filament-magic-login.admin.modal.panel', ['panel' => $panel]);
+
+    $elsewhere = SendMagicLinkAction::make()->anyPanel();
+    $elsewhere->record(makeUser(['can_access_panels' => ['app']]));
+
+    $here = SendMagicLinkAction::make()->anyPanel();
+    $here->record(makeUser(['can_access_panels' => ['admin', 'app']]));
+
+    expect($elsewhere->getModalDescription())->toContain($panelNamed('app'))
+        ->and($here->getModalDescription())->not->toContain($panelNamed('admin'));
+});
+
+it('never lands on a panel that cannot issue links', function (): void {
+    TestCase::$registerPluginlessPanel = true;
+
+    withUserResource();
+
+    $action = SendMagicLinkAction::make()->anyPanel();
+
+    expect(array_map(fn ($panel) => $panel->getId(), $action->getCandidatePanels()))
+        // The current panel first, and the plugin-less one left out entirely.
+        ->toBe(['admin', 'app']);
+});
+
+it('leaves a record that is not authenticatable alone', function (): void {
+    withUserResource();
+
+    expect(SendMagicLinkAction::make()->canReceiveMagicLink())->toBeFalse();
+});
+
+it('takes its icon from the plugin, in the row and in the modal', function (): void {
+    withUserResource(fn ($plugin) => $plugin->adminIcon('heroicon-o-key'));
+
+    $action = livewire(ListUsers::class)->instance()->getTable()->getAction('sendMagicLink');
+
+    expect($action->getIcon())->toBe('heroicon-o-key')
+        ->and($action->getModalIcon())->toBe('heroicon-o-key');
+});
+
+it('follows the login page icon unless the admin one is set, and drops it on false', function (): void {
+    withUserResource(fn ($plugin) => $plugin->icon('heroicon-o-sparkles'));
+
+    expect(SendMagicLinkAction::make()->getIcon())->toBe('heroicon-o-sparkles');
+
+    withUserResource(fn ($plugin) => $plugin->icon('heroicon-o-sparkles')->adminIcon(false));
+
+    expect(SendMagicLinkAction::make()->getIcon())->toBeNull();
+});
+
+it('lets the action override the icon for one placement', function (): void {
+    withUserResource(fn ($plugin) => $plugin->adminIcon('heroicon-o-key'));
+
+    expect(SendMagicLinkAction::make()->icon('heroicon-o-bolt')->getIcon())->toBe('heroicon-o-bolt');
+});
+
+it('rescues a name no icon set has, wherever it was set', function (): void {
+    withUserResource(fn ($plugin) => $plugin->adminIcon('heroicon-o-key'));
+
+    // Filament's own ->icon() is not ours to validate on the way in, so it is checked on
+    // the way out: an SvgNotFound here would be a 500 on the whole users table.
+    $action = SendMagicLinkAction::make()
+        ->icon('heroicon-s-email')
+        ->modalIcon('heroicon-s-email');
+
+    expect($action->getIcon())->toBe('heroicon-o-key')
+        ->and($action->getModalIcon())->toBe('heroicon-o-key');
+});
+
+it('renders a row whose icon does not exist instead of erroring', function (): void {
+    withUserResource(fn ($plugin) => $plugin->adminIcon('heroicon-s-email'));
+
+    makeUser();
+
+    livewire(ListUsers::class)
+        ->assertOk()
+        ->assertSeeHtml("mountAction('sendMagicLink'");
+});
+
+it('renders a row whose icon the application got wrong on the action', function (): void {
+    withUserResource();
+
+    UsersTable::$configureAction = fn (SendMagicLinkAction $action) => $action->icon('heroicon-s-email');
+
+    makeUser();
+
+    livewire(ListUsers::class)
+        ->assertOk()
+        ->assertSeeHtml("mountAction('sendMagicLink'");
+});
 
 it('warns the administrator once they have sent too many links', function (): void {
     withUserResource(fn ($plugin) => $plugin->adminRateLimit(maxAttempts: 1, decaySeconds: 300));

@@ -3,6 +3,7 @@
 use Arzcode\FilamentMagicLogin\Contracts\TokenRepository;
 use Arzcode\FilamentMagicLogin\Enums\MagicLinkPosition;
 use Arzcode\FilamentMagicLogin\Events\MagicLinkRejected;
+use Arzcode\FilamentMagicLogin\MagicLoginPlugin;
 use Arzcode\FilamentMagicLogin\Notifications\MagicLinkNotification;
 use Arzcode\FilamentMagicLogin\Notifications\QueuedMagicLinkNotification;
 use Arzcode\FilamentMagicLogin\Pages\Login;
@@ -323,4 +324,18 @@ it('mounts the action from its name alone', function (): void {
         ->assertNotified();
 
     expect(tokenCount())->toBe(1);
+});
+
+it('takes the login page icon from the plugin', function (): void {
+    expect(livewire(Login::class)->instance()->magicLinkAction()->getIcon())
+        ->toBe(MagicLoginPlugin::DEFAULT_ICON);
+
+    $this->rebootWith([], fn ($plugin) => $plugin->icon('heroicon-o-sparkles'));
+
+    expect(livewire(Login::class)->instance()->magicLinkAction()->getIcon())
+        ->toBe('heroicon-o-sparkles');
+
+    $this->rebootWith([], fn ($plugin) => $plugin->icon(false));
+
+    expect(livewire(Login::class)->instance()->magicLinkAction()->getIcon())->toBeNull();
 });

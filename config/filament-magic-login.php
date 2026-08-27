@@ -24,6 +24,9 @@ return [
     // Where the action appears on the login page.
     'position' => MagicLinkPosition::BelowForm,
 
+    // Icon on the login page's action. False removes it.
+    'icon' => 'heroicon-o-envelope',
+
     // Rate limiting of link requests, keyed by email + IP.
     'rate_limit' => [
         'max_attempts' => 3,
@@ -59,6 +62,9 @@ return [
         // Gate ability checked against the target user before the action is shown or run.
         // Null defers to the resource's own authorization. See the README.
         'ability' => null,
+
+        // Icon on the action and its modal. Null follows the icon above; false removes it.
+        'icon' => null,
 
     ],
 

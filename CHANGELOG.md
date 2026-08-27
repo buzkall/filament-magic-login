@@ -22,6 +22,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   users table, so none of those answers tells them anything new. Admin sends are rate limited by
   administrator, in their own key namespace, so they never eat into the recipient's own allowance
   for asking on the login page.
+- The action only shows for a user a link could actually help: it hides itself on the
+  administrator's own row — somebody already signed in has no use for a link to where they already
+  are — and on any user the target panel would turn away, which is the answer `canAccessPanel()`
+  gives while the row is being drawn. A user who cannot reach the panel you are looking at but can
+  reach another one gets the action wherever you name that panel: `->panel('app')` decides both
+  which panel the link is minted for and which panel's door is asked about, so two placements can
+  sit side by side, each showing only for the users its own panel would admit. `SendMagicLinkToUser`
+  still refuses the send outright, which covers access revoked after the page was drawn.
+- Where a users table mixes people who belong to different panels, `->panels(['admin', 'app'])`
+  hands the action an ordered list and mints the link for the first panel that row's user can
+  actually reach — a colleague gets an admin link, a client gets an app one, and somebody in both
+  is sent where the administrator is standing. `->anyPanel()` does the same over every panel that
+  registers the plugin, current panel first. The confirmation modal names the panel whenever it is
+  not the one being looked at, so "send a login link" never quietly means a different door.
+- The envelope icon is now configurable rather than hard-coded: `icon()` on the plugin for the
+  login page's action, `adminIcon()` for the "send a login link" action and its modal — which
+  follows `icon()` unless you set it — and Filament's own `->icon()` on the action for one
+  placement. `false` removes the icon altogether, a `BackedEnum` works as well as a string, and a
+  name no icon set has falls back down the same chain rather than rendering — a typo like
+  `heroicon-s-email` costs the icon, where it would otherwise be an `SvgNotFound` error page on
+  the whole users table. That check runs on whatever the icon turns out to be, including a name
+  handed to Filament's own `->icon()` on the action. Both have config keys, `icon` and
+  `admin.icon`.
 - Per-panel and config options for all of it: `adminExpiresAfter()`, `expiryPresets()`,
   `maxAdminExpiresAfter()`, `adminRateLimit()` and `adminAbility()`, under a new `admin` block in
   the config file.

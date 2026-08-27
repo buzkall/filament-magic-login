@@ -36,6 +36,7 @@ return [
         'modal' => [
             'heading' => 'Envia un enllaç d\'accés',
             'description' => 'S\'enviarà per correu a :user un enllaç d\'accés d\'un sol ús. Aquí no es mostra mai.',
+            'panel' => 'Li dóna accés al tauler [:panel].',
             'submit' => 'Envia l\'enllaç',
         ],
         'field' => [

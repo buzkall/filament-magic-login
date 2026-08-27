@@ -4,6 +4,7 @@ use Arzcode\FilamentMagicLogin\Enums\MagicLinkPosition;
 use Arzcode\FilamentMagicLogin\MagicLoginPlugin;
 use Arzcode\FilamentMagicLogin\Notifications\MagicLinkNotification;
 use Arzcode\FilamentMagicLogin\Tests\Fixtures\Notifications\CustomMagicLinkNotification;
+use Filament\Support\Icons\Heroicon;
 
 // 26
 it('falls back to config when no setter is called', function (): void {
@@ -125,4 +126,52 @@ it('lets the panel override every admin default', function (): void {
 
 it('treats a blank admin ability as none at all', function (): void {
     expect(MagicLoginPlugin::make()->adminAbility('')->getAdminAbility())->toBeNull();
+});
+
+it('falls back through the icon chain, setter to config to the login page icon', function (): void {
+    // Nothing configured: the envelope, on both actions.
+    expect(MagicLoginPlugin::make()->getIcon())->toBe(MagicLoginPlugin::DEFAULT_ICON)
+        ->and(MagicLoginPlugin::make()->getAdminIcon())->toBe(MagicLoginPlugin::DEFAULT_ICON);
+
+    // An application that only says ->icon() means it in both places.
+    $plugin = MagicLoginPlugin::make()->icon('heroicon-o-sparkles');
+
+    expect($plugin->getIcon())->toBe('heroicon-o-sparkles')
+        ->and($plugin->getAdminIcon())->toBe('heroicon-o-sparkles');
+
+    config()->set('filament-magic-login.admin.icon', 'heroicon-o-paper-airplane');
+
+    expect($plugin->getAdminIcon())->toBe('heroicon-o-paper-airplane');
+
+    // The setter still wins over both, and takes a closure like every other option.
+    expect($plugin->adminIcon(fn (): string => 'heroicon-o-key')->getAdminIcon())->toBe('heroicon-o-key');
+});
+
+it('drops the icon when told false, without falling back', function (): void {
+    expect(MagicLoginPlugin::make()->icon(false)->getIcon())->toBeNull()
+        // The admin icon follows the login page one, including down to nothing.
+        ->and(MagicLoginPlugin::make()->icon(false)->getAdminIcon())->toBeNull()
+        ->and(MagicLoginPlugin::make()->adminIcon(false)->getAdminIcon())->toBeNull()
+        ->and(MagicLoginPlugin::make()->adminIcon(false)->getIcon())->toBe(MagicLoginPlugin::DEFAULT_ICON);
+});
+
+it('falls back to the default when the icon set has no such name', function (): void {
+    // The kind of typo that is otherwise an SvgNotFound — a 500 on the users table.
+    $plugin = MagicLoginPlugin::make()->icon('heroicon-s-email');
+
+    expect($plugin->getIcon())->toBe(MagicLoginPlugin::DEFAULT_ICON)
+        // The admin icon follows the same chain: a bad name there falls to the login
+        // page's icon, and only then to the default.
+        ->and($plugin->adminIcon('heroicon-o-not-a-real-icon')->getAdminIcon())->toBe(MagicLoginPlugin::DEFAULT_ICON)
+        ->and(
+            MagicLoginPlugin::make()
+                ->icon('heroicon-o-key')
+                ->adminIcon('heroicon-o-not-a-real-icon')
+                ->getAdminIcon()
+        )->toBe('heroicon-o-key');
+});
+
+it('leaves an enum and an image path alone', function (): void {
+    expect(MagicLoginPlugin::make()->icon(Heroicon::Key)->getIcon())->toBe(Heroicon::Key)
+        ->and(MagicLoginPlugin::make()->icon('/img/magic-link.svg')->getIcon())->toBe('/img/magic-link.svg');
 });
