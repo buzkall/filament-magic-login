@@ -256,3 +256,197 @@ it('never returns unparsable code', function (string $code): void {
     'trait' => ["<?php\nuse Arzcode\\FilamentMagicLogin\\Concerns\\HasMagicLinkAction;\nclass A { use HasMagicLinkAction; }"],
     'closure use' => ["<?php\nuse Arzcode\\FilamentMagicLogin\\MagicLoginPlugin;\nclass A { function p(\$p) { \$x = 1; return \$p->plugin(MagicLoginPlugin::make()->redirectTo(function () use (\$x) { return \$x; })); } }"],
 ]);
+
+it('removes the action from a table, leaving the other actions', function (): void {
+    $code = <<<'PHP'
+    <?php
+
+    namespace App\Filament\Resources\Users\Tables;
+
+    use Arzcode\FilamentMagicLogin\Actions\SendMagicLinkAction;
+    use Filament\Actions\EditAction;
+    use Filament\Tables\Table;
+
+    class UsersTable
+    {
+        public static function configure(Table $table): Table
+        {
+            return $table
+                ->recordActions([
+                    EditAction::make(),
+                    SendMagicLinkAction::make(),
+                ]);
+        }
+    }
+
+    PHP;
+
+    $result = (new PackageReferenceRemover)->remove($code);
+
+    expect($result->changed)->toBeTrue()
+        ->and($result->code)->not->toContain('SendMagicLinkAction')
+        ->and($result->code)->toContain('EditAction::make(),')
+        ->and($result->code)->toContain('->recordActions([')
+        ->and($result->unresolvedLines)->toBe([])
+        ->and(php_syntax_ok($result->code))->toBeTrue();
+});
+
+it('leaves an empty array behind rather than deleting the call', function (): void {
+    $code = <<<'PHP'
+    <?php
+
+    namespace App\Filament\Resources\Users\Pages;
+
+    use Arzcode\FilamentMagicLogin\Actions\SendMagicLinkAction;
+    use Filament\Resources\Pages\ViewRecord;
+
+    class ViewUser extends ViewRecord
+    {
+        protected function getHeaderActions(): array
+        {
+            return [
+                SendMagicLinkAction::make(),
+            ];
+        }
+    }
+
+    PHP;
+
+    $result = (new PackageReferenceRemover)->remove($code);
+
+    expect($result->changed)->toBeTrue()
+        ->and($result->code)->not->toContain('SendMagicLinkAction')
+        // getHeaderActions() must keep returning an array, so the empty one stays.
+        ->and($result->code)->toContain('return [')
+        ->and($result->unresolvedLines)->toBe([])
+        ->and(php_syntax_ok($result->code))->toBeTrue();
+});
+
+it('removes the action from a nested action group', function (): void {
+    $code = <<<'PHP'
+    <?php
+
+    namespace App\Filament\Resources\Users\Tables;
+
+    use Arzcode\FilamentMagicLogin\Actions\SendMagicLinkAction;
+    use Filament\Actions\ActionGroup;
+    use Filament\Actions\EditAction;
+
+    class UsersTable
+    {
+        public static function actions(): array
+        {
+            return [
+                ActionGroup::make([
+                    EditAction::make(),
+                    SendMagicLinkAction::make(),
+                ]),
+            ];
+        }
+    }
+
+    PHP;
+
+    $result = (new PackageReferenceRemover)->remove($code);
+
+    expect($result->changed)->toBeTrue()
+        ->and($result->code)->not->toContain('SendMagicLinkAction')
+        ->and($result->code)->toContain('ActionGroup::make([')
+        ->and($result->code)->toContain('EditAction::make(),')
+        ->and(php_syntax_ok($result->code))->toBeTrue();
+});
+
+it('removes the action and the plugin from one file in a single pass', function (): void {
+    $code = <<<'PHP'
+    <?php
+
+    namespace App\Providers\Filament;
+
+    use Arzcode\FilamentMagicLogin\Actions\SendMagicLinkAction;
+    use Arzcode\FilamentMagicLogin\MagicLoginPlugin;
+    use Filament\Panel;
+    use Filament\PanelProvider;
+
+    class AdminPanelProvider extends PanelProvider
+    {
+        public function panel(Panel $panel): Panel
+        {
+            return $panel
+                ->id('admin')
+                ->plugin(MagicLoginPlugin::make());
+        }
+
+        public function actions(): array
+        {
+            return [
+                SendMagicLinkAction::make(),
+            ];
+        }
+    }
+
+    PHP;
+
+    $result = (new PackageReferenceRemover)->remove($code);
+
+    expect($result->changed)->toBeTrue()
+        ->and($result->code)->not->toContain('SendMagicLinkAction')
+        ->and($result->code)->not->toContain('MagicLoginPlugin')
+        ->and($result->code)->not->toContain('Arzcode')
+        ->and($result->unresolvedLines)->toBe([])
+        ->and(php_syntax_ok($result->code))->toBeTrue();
+});
+
+it('reports rather than rewrites an action it cannot cut out cleanly', function (): void {
+    $code = <<<'PHP'
+    <?php
+
+    namespace App\Filament\Resources\Users\Tables;
+
+    use Arzcode\FilamentMagicLogin\Actions\SendMagicLinkAction;
+    use Filament\Actions\EditAction;
+
+    class UsersTable
+    {
+        public static function actions(bool $withLink): array
+        {
+            return [
+                EditAction::make(),
+                $withLink ? SendMagicLinkAction::make() : EditAction::make(),
+            ];
+        }
+    }
+
+    PHP;
+
+    $result = (new PackageReferenceRemover)->remove($code);
+
+    expect($result->changed)->toBeFalse()
+        ->and($result->code)->toBe($code)
+        ->and($result->unresolvedLines)->not->toBe([]);
+});
+
+it('reports an action held in a variable rather than guessing', function (): void {
+    $code = <<<'PHP'
+    <?php
+
+    namespace App\Filament\Resources\Users\Tables;
+
+    use Arzcode\FilamentMagicLogin\Actions\SendMagicLinkAction;
+
+    class UsersTable
+    {
+        public static function actions(): array
+        {
+            $link = SendMagicLinkAction::make();
+
+            return [$link];
+        }
+    }
+
+    PHP;
+
+    $result = (new PackageReferenceRemover)->remove($code);
+
+    expect($result->changed)->toBeFalse()
+        ->and($result->unresolvedLines)->not->toBe([]);
+});

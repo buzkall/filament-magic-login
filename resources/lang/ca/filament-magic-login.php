@@ -10,7 +10,7 @@ return [
     'messages' => [
         'email_required' => 'Introdueix primer la teva adreça de correu electrònic.',
         'sent_title' => 'Revisa la teva safata d\'entrada',
-        'sent_body' => 'Si existeix un compte amb aquesta adreça, t\'hem enviat un enllaç d\'accés. Caduca d\'aquí a :minutes minuts.',
+        'sent_body' => 'Si existeix un compte amb aquesta adreça, t\'hem enviat un enllaç d\'accés. Caduca d\'aquí a :duration.',
         'too_many_requests_title' => 'Massa intents',
         'too_many_requests_body' => 'Espera :seconds segons abans de tornar-ho a provar.',
         'invalid_title' => 'Aquest enllaç d\'accés no es pot fer servir',
@@ -25,14 +25,55 @@ return [
     'mail' => [
         'subject' => 'El teu enllaç d\'accés a :app',
         'greeting' => 'Hola!',
-        'intro' => 'Prem el botó de sota per entrar. L\'enllaç caduca d\'aquí a :minutes minuts i només es pot fer servir una vegada.',
+        'intro' => 'Prem el botó de sota per entrar. L\'enllaç caduca d\'aquí a :duration i només es pot fer servir una vegada.',
         'button' => 'Entrar',
         'ignore' => 'Si no has sol·licitat aquest enllaç, pots ignorar aquest correu.',
         'fallback' => 'Si el botó no funciona, copia aquesta URL al teu navegador:',
     ],
 
+    'admin' => [
+        'label' => 'Envia un enllaç d\'accés',
+        'modal' => [
+            'heading' => 'Envia un enllaç d\'accés',
+            'description' => 'S\'enviarà per correu a :user un enllaç d\'accés d\'un sol ús. Aquí no es mostra mai.',
+            'submit' => 'Envia l\'enllaç',
+        ],
+        'field' => [
+            'expiry' => [
+                'label' => 'L\'enllaç caduca d\'aquí a',
+            ],
+            'custom' => [
+                'label' => 'Minuts',
+                'helper' => 'Entre 1 i :max minuts.',
+            ],
+        ],
+        'presets' => [
+            'minutes' => ':count minut|:count minuts',
+            'hours' => ':count hora|:count hores',
+            'days' => ':count dia|:count dies',
+            'custom' => 'Personalitzat',
+        ],
+        'sent' => [
+            'title' => 'Enllaç d\'accés enviat',
+            'body' => 'S\'ha enviat per correu un enllaç d\'accés a :user. Caduca d\'aquí a :duration.',
+        ],
+        'no_email' => [
+            'title' => 'Sense adreça de correu',
+            'body' => ':user no té adreça de correu, així que no hi ha on enviar l\'enllaç.',
+        ],
+        'cannot_access' => [
+            'title' => 'Sense accés a aquest tauler',
+            'body' => ':user no pot accedir al tauler [:panel], així que un enllaç no el deixaria entrar.',
+        ],
+        'rate_limited' => [
+            'title' => 'S\'han enviat massa enllaços',
+            'body' => 'Espera :seconds segons abans d\'enviar-ne un altre.',
+        ],
+    ],
+
     'exceptions' => [
         'custom_login_without_trait' => 'El tauler [:panel] fa servir una pàgina d\'accés personalitzada [:class] que no utilitza :trait. Afegeix el trait o crida ->useCustomLoginPage().',
+        'panel_without_plugin' => 'El tauler [:panel] no registra el plugin de magic login, així que no pot emetre enllaços d\'accés.',
         'unknown_storage_driver' => 'Driver d\'emmagatzematge desconegut per a filament-magic-login [:driver]. Fes servir "database" o "cache".',
         'unsafe_cache_store' => 'L\'store de memòria cau [:store] no es pot fer servir amb filament-magic-login en producció.',
     ],
@@ -61,6 +102,12 @@ return [
         'plugin_added' => 'S\'ha afegit el plugin a [:path].',
         'plugin_failed' => 'No s\'ha pogut editar [:path] amb seguretat, així que s\'ha deixat intacte.',
         'plugin_manual' => 'Registra el plugin al tauler on el vulguis:',
+        'resource_prompt' => 'Vols afegir l\'acció "envia un enllaç d\'accés" a [:path]?',
+        'resource_added' => 'Afegida l\'acció a [:path].',
+        'resource_exists' => 'L\'acció ja és a [:path].',
+        'resource_failed' => 'No s\'ha pogut editar [:path] amb seguretat, així que s\'ha deixat intacte.',
+        'resource_missing' => 'No s\'ha trobat un únic recurs de Filament per a [:model], així que no s\'ha canviat res.',
+        'resource_manual' => 'Afegeix tu mateix l\'acció al teu recurs d\'usuaris:',
         'done' => 'filament-magic-login s\'ha instal\'lat.',
     ],
 

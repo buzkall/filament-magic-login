@@ -24,13 +24,16 @@ final class PackageReferenceRemover
 
     private const TRAIT_CLASS = 'HasMagicLinkAction';
 
+    private const ACTION_CLASS = 'SendMagicLinkAction';
+
     public function remove(string $code): CleanedSource
     {
         if (! str_contains($code, self::NAMESPACE)) {
             return new CleanedSource($code, false, []);
         }
 
-        $cleaned = $this->removeTraitUses($this->removePluginRegistrations($code));
+        $cleaned = $this->removeActionEntries($this->removePluginRegistrations($code));
+        $cleaned = $this->removeTraitUses($cleaned);
         $cleaned = $this->removeUnusedImports($cleaned);
 
         if (! $this->isParsable($cleaned)) {
@@ -67,7 +70,8 @@ final class PackageReferenceRemover
             if (
                 str_contains($token['text'], self::NAMESPACE) ||
                 str_contains($token['text'], self::PLUGIN_CLASS) ||
-                str_contains($token['text'], self::TRAIT_CLASS)
+                str_contains($token['text'], self::TRAIT_CLASS) ||
+                str_contains($token['text'], self::ACTION_CLASS)
             ) {
                 $lines[] = $token['line'];
             }
@@ -244,6 +248,118 @@ final class PackageReferenceRemover
         }
 
         return $elements;
+    }
+
+    /**
+     * Removes our entry from whichever array holds it — a table's `recordActions`, a
+     * page's `getHeaderActions`, a toolbar, or a nested `ActionGroup::make([...])`.
+     *
+     * Unlike the plugin case, an array left with nothing in it is kept: `[]` is a
+     * perfectly good list of actions, where `->plugins([])` was a call worth deleting.
+     */
+    private function removeActionEntries(string $code): string
+    {
+        $aliases = $this->aliasesFor($code, self::ACTION_CLASS);
+
+        do {
+            $tokens = $this->tokens($code);
+            $range = $this->findActionElementRange($tokens, $aliases);
+
+            if ($range === null) {
+                return $code;
+            }
+
+            $code = $this->cut($tokens, $range[0], $range[1]);
+        } while (true);
+    }
+
+    /**
+     * @param  array<int, array{id: int|null, text: string, line: int}>  $tokens
+     * @param  array<int, string>  $aliases
+     * @return array{0: int, 1: int}|null
+     */
+    private function findActionElementRange(array $tokens, array $aliases): ?array
+    {
+        foreach ($tokens as $index => $token) {
+            if (! $this->mentions($token['text'], $aliases)) {
+                continue;
+            }
+
+            $array = $this->enclosingArray($tokens, $index);
+
+            // Not a plain array element — a ternary, a variable assignment, an import.
+            // Left where it is, and reported by referenceLines() instead.
+            if ($array === null) {
+                continue;
+            }
+
+            [$arrayOpen, $arrayClose] = $array;
+
+            foreach ($this->splitElements($tokens, $arrayOpen, $arrayClose) as [$start, $end]) {
+                if ($index < $start || $index > $end) {
+                    continue;
+                }
+
+                // A spread, or an element that is more than the action itself, is not
+                // ours to cut out from under whatever else is in there.
+                if ($this->rangeContains($tokens, $start, $end, ['...', '?', '=>'])) {
+                    return null;
+                }
+
+                // Swallow the separating comma so the array stays valid.
+                $afterEnd = $this->nextMeaningful($tokens, $end + 1);
+
+                if ($afterEnd !== null && $tokens[$afterEnd]['text'] === ',') {
+                    $end = $afterEnd;
+                }
+
+                return [$this->withLeadingWhitespace($tokens, $start), $end];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * The innermost array literal enclosing a token, or null when the nearest thing
+     * still open around it is a call or a block rather than an array.
+     *
+     * @param  array<int, array{id: int|null, text: string, line: int}>  $tokens
+     * @return array{0: int, 1: int}|null
+     */
+    private function enclosingArray(array $tokens, int $index): ?array
+    {
+        $depth = 0;
+
+        for ($current = $index; $current >= 0; $current--) {
+            $text = $tokens[$current]['text'];
+
+            if (in_array($text, [')', ']', '}'], true)) {
+                $depth++;
+
+                continue;
+            }
+
+            if (! in_array($text, ['(', '[', '{'], true)) {
+                continue;
+            }
+
+            if ($depth > 0) {
+                $depth--;
+
+                continue;
+            }
+
+            if ($text !== '[') {
+                return null;
+            }
+
+            $close = $this->matchingBracket($tokens, $current);
+
+            return $close === null ? null : [$current, $close];
+        }
+
+        return null;
     }
 
     /**

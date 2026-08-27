@@ -33,8 +33,9 @@ php artisan filament-magic-login:install
 
 The install command offers to publish the config file and — unless you have chosen the `cache`
 storage driver — to publish and run the migration that creates the `magic_login_tokens` table and
-to schedule the token pruner in `routes/console.php`. Last, it offers to register the plugin on a
-panel for you, which is the step that puts the action on your login page.
+to schedule the token pruner in `routes/console.php`. It then offers to register the plugin on a
+panel for you, which is the step that puts the action on your login page, and finally to add the
+["send a login link" action](#sending-a-link-to-a-user) to your user resource.
 
 Every step is a question and every one can be declined; nothing here is mandatory. Skip the config
 file and the package defaults apply. The two questions that edit your own code — the pruner and the
@@ -54,10 +55,12 @@ composer remove arzcode/filament-magic-login
 The uninstall command undoes what the install command did, in the order that leaves the
 application working at every step:
 
-1. Removes `->plugin(MagicLoginPlugin::make())` from your panel providers and the
-   `HasMagicLinkAction` trait from any custom login page, along with the now-unused imports.
-   Without this, `composer remove` would leave your provider pointing at a class that no longer
-   exists and every request would fail.
+1. Removes `->plugin(MagicLoginPlugin::make())` from your panel providers, the
+   `HasMagicLinkAction` trait from any custom login page, and `SendMagicLinkAction::make()` from
+   whichever action arrays hold it, along with the now-unused imports. Without this,
+   `composer remove` would leave your source pointing at classes that no longer exist and every
+   request would fail. An array left with nothing in it is kept rather than deleted — a
+   `getHeaderActions()` still has to return one.
 2. Drops the `magic_login_tokens` table.
 3. Deletes the published config, migration and translations.
 
@@ -98,6 +101,114 @@ certainty — a provider that returns its panel from more than one place, for in
 and left for you. If your panel uses a **custom** login page, see
 [Using your own login page](#using-your-own-login-page).
 
+## Sending a link to a user
+
+An administrator can email a specific user a login link from inside a panel, choosing how long it
+lives — for somebody being onboarded who has never set a password, for a user whose reset mail
+keeps bouncing, for a contractor who needs a way in until Monday.
+
+```php
+use Arzcode\FilamentMagicLogin\Actions\SendMagicLinkAction;
+```
+
+One class covers all three placements. In the resource's table:
+
+```php
+->recordActions([
+    EditAction::make(),
+    SendMagicLinkAction::make(),
+])
+```
+
+and in `getHeaderActions()` on the View and Edit pages:
+
+```php
+protected function getHeaderActions(): array
+{
+    return [
+        SendMagicLinkAction::make(),
+    ];
+}
+```
+
+In the table row the action renders as an icon button — hover for its label — while the two
+page-header actions keep their label. Pass any explicit style (`->button()`, `->iconButton()`,
+`->link()`) to override that per placement.
+
+`filament-magic-login:install` offers to do all of that for you. It finds your user resource by
+comparing each resource's `$model` against the model your panel's guard authenticates, and follows
+a resource to an extracted table class through its own imports. If it cannot identify one resource
+with certainty — none match, or two do — it prints the snippet and leaves your source alone.
+Re-generating the resource with `make:filament-resource --force` will wipe the wiring; re-run the
+installer, or paste it back.
+
+Three things worth being explicit about:
+
+- **The link is emailed to that user, and never shown to the administrator who sent it.** There is
+  no "copy link" option, deliberately: this is a way to help somebody log in, not a way to log in
+  as them.
+- **The administrator is told exactly what happened** — sent, no email address, cannot access this
+  panel, or too many links sent — unlike the login page, which stays deliberately silent. That is
+  safe here because the person reading it is authenticated and can already see the users table, so
+  none of those answers tells them anything new.
+- **The expiry is chosen per send** from a row of toggle buttons, with a "custom" choice for
+  anything else, and is clamped to `admin.max_expires_after_minutes` (three days by default). The
+  clamped value is what gets stored, what the email says, and what the confirmation quotes, so the
+  three can never disagree.
+
+| Fluent method | Default | What it does |
+|---|---|---|
+| `panel(string\|Closure\|null)` | the current panel | Which panel the link is minted for. |
+| `expiresAfter(int\|Closure\|null)` | `admin.expires_after_minutes` | Which choice is pre-selected. |
+| `maxExpiresAfter(int\|Closure\|null)` | `admin.max_expires_after_minutes` | Ceiling for this placement. |
+| `expiryPresets(array\|Closure\|null)` | `admin.expiry_presets` | The buttons offered, in minutes. |
+| `askForExpiry(bool\|Closure)` | `true` | `false` sends at the default with no field. |
+| `ability(string\|Closure\|null)` | `admin.ability` | Gate ability checked against the target user. |
+
+Everything `Filament\Actions\Action` offers works as usual — `->label()`, `->icon()`,
+`->visible()`, `->authorize()`, `->after()`. To change the wording of the confirmations, override
+`->action()`.
+
+### Who may send a link
+
+By default the action is visible to anyone who can already reach the row or the record page, which
+means it inherits whatever your resource's `canViewAny()` / `canView()` and your panel's auth
+middleware already decide. That is where an application with opinions about who may administer
+users has already expressed them.
+
+To require a policy ability as well:
+
+```php
+// config/filament-magic-login.php
+'admin' => ['ability' => 'sendMagicLink'],
+```
+
+```php
+// app/Policies/UserPolicy.php
+public function sendMagicLink(User $administrator, User $target): bool
+{
+    return $administrator->hasRole('super-admin');
+}
+```
+
+The default is not that, on purpose: Laravel's Gate denies an ability no policy defines, so
+shipping `'sendMagicLink'` as the default would make the action vanish in every application that
+installed it.
+
+**If you run more than one panel, set `admin.ability`.** `->panel('app')` lets an administrator of
+one panel mint a login credential for another, which is the feature working as intended and
+exactly the case worth gating.
+
+Two guards are always on regardless: the action hides itself when the record is not something that
+can be authenticated, and a user who fails `canAccessPanel()` on the target panel is refused
+outright — an administrator cannot mint a working credential for someone the panel would turn away.
+
+A note on the link itself: the consume route is behind `guest:` middleware, so an administrator who
+is signed in and clicks the link they just sent is redirected to the panel home **without**
+consuming the token. That is intentional — a link should not silently swap an authenticated
+session — but it does mean "open it yourself to check" is not a test. Open it in a private window,
+or send it to a user who is signed out.
+
 ## Configuration
 
 Every option has a global default in `config/filament-magic-login.php` and a per-panel override
@@ -116,6 +227,11 @@ on the plugin. Panel-level setters win; anything you do not set falls back to co
 | `invalidatePrevious(bool\|Closure)` | `invalidate_previous` | `true` | Drop the user's other unused tokens for this panel when a new link is issued. |
 | `honorRemember(bool\|Closure)` | `honor_remember` | `true` | Carry the "remember me" checkbox into the magic-link session. |
 | `useCustomLoginPage(bool\|Closure)` | — | `false` | Skip login page detection entirely. |
+| `adminExpiresAfter(int\|Closure\|null)` | `admin.expires_after_minutes` | falls back to `expires_after_minutes` | Expiry pre-selected in the admin modal. |
+| `expiryPresets(array\|Closure)` | `admin.expiry_presets` | `[15, 60, 480, 1440, 4320]` | Toggle buttons offered there, in minutes. |
+| `maxAdminExpiresAfter(int\|Closure)` | `admin.max_expires_after_minutes` | `4320` (3 days) | Ceiling for an admin-chosen expiry. |
+| `adminRateLimit(int $maxAttempts, int $decaySeconds)` | `admin.rate_limit.*` | `10` / `60` | Limits admin-issued links, keyed by the administrator. `0` disables it. |
+| `adminAbility(string\|Closure\|null)` | `admin.ability` | `null` | Gate ability required to send a link. |
 | — | `queue` | `true` | Send the shipped notification on the queue. |
 | — | `storage.driver` | `database` | `database` or `cache`. Global only, not per panel. |
 | — | `blur_timing` | `true` | Pad unknown-address responses so timing does not leak account existence. |
@@ -194,9 +310,19 @@ Listen to these for audit logging:
 
 | Event | Fired when |
 |---|---|
-| `MagicLinkRequested($user, $token, $panelId)` | A link was issued and emailed. |
+| `MagicLinkRequested($user, $token, $panelId, $issuedBy)` | A link was issued and emailed. |
 | `MagicLinkConsumed($user, $token, $panelId)` | A link was redeemed and the user signed in. |
 | `MagicLinkRejected($reason, $email, $panelId, $ip)` | Anything was refused. |
+
+`$issuedBy` is the administrator who sent the link, or `null` when the user asked for it
+themselves on the login page — `$event->wasIssuedByAdministrator()` says which. It was added as an
+optional fourth argument rather than as a separate event on purpose: a new event class would have
+left every existing listener with an audit log quietly missing the more privileged half of its
+entries.
+
+The attribution lives on this event only, so `MagicLinkConsumed` cannot tell you a redeemed link
+was admin-issued. If you need that, record it here keyed by `$event->token->id` and join on
+consumption.
 
 `MagicLinkRejected` reasons: `rate_limited`, `unknown_user`, `cannot_access_panel`, `invalid`,
 `expired`, `used`. The first three are raised on the request side (where the UI deliberately
@@ -230,7 +356,8 @@ No migration at all. Entries are keyed by hash and expire on their own.
 - Consumption is guarded by `Cache::lock()`, so two simultaneous clicks cannot both win.
 - Consumed tokens are kept (marked used) for 24 hours so "already used" and "expired" stay
   distinguishable from "never existed" — after that the distinction is lost.
-- No audit trail: listen to the events above if you need one.
+- No audit trail: listen to the events above if you need one. That applies to admin-issued links
+  too — who sent one is carried by `MagicLinkRequested`, never by a stored row.
 
 Set it globally in config; it is not a per-panel option.
 
@@ -273,6 +400,19 @@ them for you to delete, the same as any other code you wrote by hand.
   requests all produce the same confirmation message, and unknown addresses are padded in time.
 - **Rate limited on both sides**: requests by email + IP, redemptions by IP.
 - **Existing users only.** A magic link never creates an account.
+- **An admin-issued link is a credential.** It is gated by whatever already decides who may reach
+  your user resource, plus `admin.ability` when you set one — and it is only ever emailed to the
+  target user, never shown to the administrator.
+- **`requested_ip` and `requested_user_agent` record the sender**, so on an admin-issued row they
+  describe the administrator rather than the recipient. That is the useful value: who asked for
+  this link.
+- **The two rate limits are separate.** An administrator's sends are counted against the
+  administrator, in their own key namespace, so they never eat into the recipient's own allowance
+  for asking on the login page.
+- **`remember` is never carried into an admin-issued link.** Whether a session persists is the
+  recipient's own choice on the login form.
+- **A queued notification means `Sent` is "handed to the queue"**, not "delivered". With
+  `queue => true`, a broken queue will still report success to the administrator.
 
 ### Multi-factor authentication
 

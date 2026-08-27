@@ -10,7 +10,7 @@ return [
     'messages' => [
         'email_required' => 'Enter your email address first.',
         'sent_title' => 'Check your inbox',
-        'sent_body' => 'If an account exists for that address, we\'ve sent a login link. It expires in :minutes minutes.',
+        'sent_body' => 'If an account exists for that address, we\'ve sent a login link. It expires in :duration.',
         'too_many_requests_title' => 'Too many attempts',
         'too_many_requests_body' => 'Please wait :seconds seconds before trying again.',
         'invalid_title' => 'That login link can\'t be used',
@@ -25,14 +25,55 @@ return [
     'mail' => [
         'subject' => 'Your login link for :app',
         'greeting' => 'Hello!',
-        'intro' => 'Click the button below to sign in. The link expires in :minutes minutes and can only be used once.',
+        'intro' => 'Click the button below to sign in. The link expires in :duration and can only be used once.',
         'button' => 'Sign in',
         'ignore' => 'If you didn\'t request this, you can safely ignore this email.',
         'fallback' => 'If the button doesn\'t work, copy this URL into your browser:',
     ],
 
+    'admin' => [
+        'label' => 'Send a login link',
+        'modal' => [
+            'heading' => 'Send a login link',
+            'description' => 'A single-use login link will be emailed to :user. It is never shown here.',
+            'submit' => 'Send the link',
+        ],
+        'field' => [
+            'expiry' => [
+                'label' => 'The link expires in',
+            ],
+            'custom' => [
+                'label' => 'Minutes',
+                'helper' => 'Between 1 and :max minutes.',
+            ],
+        ],
+        'presets' => [
+            'minutes' => ':count minute|:count minutes',
+            'hours' => ':count hour|:count hours',
+            'days' => ':count day|:count days',
+            'custom' => 'Custom',
+        ],
+        'sent' => [
+            'title' => 'Login link sent',
+            'body' => 'A login link has been emailed to :user. It expires in :duration.',
+        ],
+        'no_email' => [
+            'title' => 'No email address',
+            'body' => ':user has no email address, so there is nowhere to send the link.',
+        ],
+        'cannot_access' => [
+            'title' => 'No access to this panel',
+            'body' => ':user cannot access the [:panel] panel, so a link would not let them in.',
+        ],
+        'rate_limited' => [
+            'title' => 'Too many links sent',
+            'body' => 'Please wait :seconds seconds before sending another.',
+        ],
+    ],
+
     'exceptions' => [
         'custom_login_without_trait' => 'Panel [:panel] uses a custom login page [:class] that does not use :trait. Add the trait or call ->useCustomLoginPage().',
+        'panel_without_plugin' => 'Panel [:panel] does not register the magic login plugin, so it cannot issue login links.',
         'unknown_storage_driver' => 'Unknown filament-magic-login storage driver [:driver]. Use "database" or "cache".',
         'unsafe_cache_store' => 'The [:store] cache store cannot be used for filament-magic-login in production.',
     ],
@@ -61,6 +102,12 @@ return [
         'plugin_added' => 'Added the plugin to [:path].',
         'plugin_failed' => 'Could not edit [:path] safely, so it was left untouched.',
         'plugin_manual' => 'Register the plugin on the panel you want it on:',
+        'resource_prompt' => 'Add the "send a login link" action to [:path]?',
+        'resource_added' => 'Added the action to [:path].',
+        'resource_exists' => 'The action is already in [:path].',
+        'resource_failed' => 'Could not edit [:path] safely, so it was left untouched.',
+        'resource_missing' => 'Found no single Filament resource for [:model], so nothing was changed.',
+        'resource_manual' => 'Add the action to your user resource yourself:',
         'done' => 'filament-magic-login has been installed.',
     ],
 

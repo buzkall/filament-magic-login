@@ -1,5 +1,6 @@
 <?php
 
+use Arzcode\FilamentMagicLogin\Support\ExpiryDuration;
 use Illuminate\Support\Arr;
 
 $locales = ['en', 'es', 'ca'];
@@ -39,7 +40,9 @@ it('resolves the shipped keys through the translator', function (string $locale)
 
     expect(__('filament-magic-login::filament-magic-login.actions.magic_link'))
         ->not->toContain('filament-magic-login::')
-        ->and(__('filament-magic-login::filament-magic-login.mail.intro', ['minutes' => 15]))
+        ->and(__('filament-magic-login::filament-magic-login.mail.intro', [
+            'duration' => ExpiryDuration::describe(15),
+        ]))
         ->toContain('15');
 })->with($locales);
 

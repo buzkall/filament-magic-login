@@ -3,8 +3,11 @@
 namespace Arzcode\FilamentMagicLogin\Commands;
 
 use Arzcode\FilamentMagicLogin\FilamentMagicLoginServiceProvider;
+use Arzcode\FilamentMagicLogin\MagicLoginPlugin;
 use Arzcode\FilamentMagicLogin\Support\PluginRegistrationWriter;
 use Arzcode\FilamentMagicLogin\Support\ScheduleWriter;
+use Arzcode\FilamentMagicLogin\Support\UserResourceWriter;
+use Filament\Facades\Filament;
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
 
@@ -30,6 +33,7 @@ class InstallCommand extends Command
         private readonly Filesystem $filesystem,
         private readonly ScheduleWriter $writer,
         private readonly PluginRegistrationWriter $registration,
+        private readonly UserResourceWriter $resources,
     ) {
         parent::__construct();
 
@@ -54,6 +58,10 @@ class InstallCommand extends Command
         // Last, because it is the step that makes the action appear: everything the
         // panel needs is in place by the time the plugin is registered.
         $this->registerPlugin();
+
+        // Last of all, because it is the only step that needs the plugin already on a
+        // panel: the action reads its settings from one.
+        $this->addResourceActions();
 
         outro(__('filament-magic-login::filament-magic-login.install.done'));
 
@@ -263,6 +271,194 @@ class InstallCommand extends Command
         note(__('filament-magic-login::filament-magic-login.install.plugin_manual'));
 
         $this->line($this->registration->snippet());
+    }
+
+    /**
+     * Offers to put the "send a login link" action on the application's own user
+     * resource — its table, and the header of each record page.
+     *
+     * Stays completely silent when the application has no Filament resources at all,
+     * so an installation that never had any is not told about a step it cannot take.
+     */
+    protected function addResourceActions(): void
+    {
+        $model = $this->userModel();
+
+        if ($model === null) {
+            return;
+        }
+
+        $files = [];
+        $isFilamentApplication = false;
+
+        foreach ($this->applicationFiles() as $path) {
+            $code = (string) $this->filesystem->get($path);
+            $files[$path] = $code;
+
+            $isFilamentApplication = $isFilamentApplication || str_contains($code, 'extends Resource');
+        }
+
+        if (! $isFilamentApplication) {
+            return;
+        }
+
+        $resources = array_keys(array_filter(
+            $files,
+            fn (string $code): bool => $this->resources->isResourceFor($code, $model),
+        ));
+
+        // None, or more than one, is a choice we have no business making for somebody.
+        if (count($resources) !== 1) {
+            note(__('filament-magic-login::filament-magic-login.install.resource_missing', [
+                'model' => $model,
+            ]));
+
+            $this->explainResourceByHand();
+
+            return;
+        }
+
+        $resource = $resources[0];
+        $resourceClass = $this->resources->declaredClass($files[$resource]);
+
+        $targets = array_filter([
+            $this->tableFile($resource, $files),
+            ...($resourceClass === null ? [] : $this->recordPages($resourceClass, $files)),
+        ]);
+
+        if ($targets === [] || ! $this->wireResourceActions($targets, $files)) {
+            $this->explainResourceByHand();
+        }
+    }
+
+    /**
+     * @param  array<int, array{0: string, 1: string}>  $targets  Path and the method to append with.
+     * @param  array<string, string>  $files
+     * @return bool Whether any file was actually edited.
+     */
+    protected function wireResourceActions(array $targets, array $files): bool
+    {
+        $wired = false;
+
+        foreach ($targets as [$path, $method]) {
+            if ($this->resources->isWired($files[$path])) {
+                note(__('filament-magic-login::filament-magic-login.install.resource_exists', [
+                    'path' => $this->relative($path),
+                ]));
+
+                $wired = true;
+
+                continue;
+            }
+
+            // Defaulting to "no" keeps an unattended install from rewriting a resource,
+            // the same guard the pruner and the plugin registration have.
+            if (! confirm(
+                label: __('filament-magic-login::filament-magic-login.install.resource_prompt', [
+                    'path' => $this->relative($path),
+                ]),
+                default: false,
+            )) {
+                continue;
+            }
+
+            $result = $this->resources->{$method}($files[$path]);
+
+            if ($result === null) {
+                warning(__('filament-magic-login::filament-magic-login.install.resource_failed', [
+                    'path' => $this->relative($path),
+                ]));
+
+                continue;
+            }
+
+            $this->filesystem->put($path, $result);
+
+            note(__('filament-magic-login::filament-magic-login.install.resource_added', [
+                'path' => $this->relative($path),
+            ]));
+
+            $wired = true;
+        }
+
+        return $wired;
+    }
+
+    /**
+     * The file holding the resource's table: the resource itself when the table is
+     * written inline, or the extracted table class it hands off to.
+     *
+     * @param  array<string, string>  $files
+     * @return array{0: string, 1: string}|null
+     */
+    protected function tableFile(string $resource, array $files): ?array
+    {
+        if ($this->resources->hasRecordActions($files[$resource])) {
+            return [$resource, 'addRecordAction'];
+        }
+
+        $imported = $this->resources->importedClasses($files[$resource]);
+
+        $candidates = array_keys(array_filter(
+            $files,
+            fn (string $code, string $path): bool => $path !== $resource
+                && $this->resources->hasRecordActions($code)
+                && in_array($this->resources->declaredClass($code), $imported, true),
+            ARRAY_FILTER_USE_BOTH,
+        ));
+
+        return count($candidates) === 1 ? [$candidates[0], 'addRecordAction'] : null;
+    }
+
+    /**
+     * @param  array<string, string>  $files
+     * @return array<int, array{0: string, 1: string}>
+     */
+    protected function recordPages(string $resourceClass, array $files): array
+    {
+        $pages = array_keys(array_filter(
+            $files,
+            fn (string $code): bool => $this->resources->isRecordPageFor($code, $resourceClass),
+        ));
+
+        return array_map(fn (string $path): array => [$path, 'addHeaderAction'], $pages);
+    }
+
+    /**
+     * The model the panels this plugin serves authenticate, so the right resource can
+     * be picked out of an application that has many.
+     */
+    protected function userModel(): ?string
+    {
+        $guards = [];
+
+        foreach (Filament::getPanels() as $panel) {
+            if ($panel->hasPlugin(MagicLoginPlugin::ID)) {
+                $guards[] = $panel->getAuthGuard();
+            }
+        }
+
+        $guards[] = config('auth.defaults.guard');
+
+        foreach (array_filter($guards) as $guard) {
+            $provider = config("auth.guards.{$guard}.provider");
+            $model = is_string($provider) ? config("auth.providers.{$provider}.model") : null;
+
+            if (is_string($model) && class_exists($model)) {
+                return $model;
+            }
+        }
+
+        $model = config('auth.providers.users.model');
+
+        return (is_string($model) && class_exists($model)) ? $model : null;
+    }
+
+    protected function explainResourceByHand(): void
+    {
+        note(__('filament-magic-login::filament-magic-login.install.resource_manual'));
+
+        $this->line($this->resources->snippet());
     }
 
     /**
