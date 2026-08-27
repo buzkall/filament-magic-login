@@ -39,3 +39,13 @@ it('prunes tokens that expired more than a day ago and keeps newer ones', functi
     expect(MagicLoginToken::query()->pluck('id')->all())
         ->toEqualCanonicalizing([$recent->id, $live->id]);
 });
+
+it('creates the token table once, so a republished migration is safe to run again', function (): void {
+    $migration = include __DIR__.'/../../database/migrations/create_magic_login_tokens_table.php.stub';
+
+    // An uninstall that kept the table, followed by an install: the migration comes back
+    // under a new name and runs against a table that is already there.
+    $migration->up();
+
+    expect(MagicLoginToken::query()->count())->toBe(0);
+});

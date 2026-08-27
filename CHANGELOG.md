@@ -5,6 +5,40 @@ All notable changes to `filament-magic-login` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 1.4.1 - 2026-08-27
+
+### Fixed
+
+- `filament-magic-login:uninstall` now removes the scheduled pruner it wrote into
+  `routes/console.php`, along with the imports that served it — Laravel's own `Schedule` import
+  included, where nothing else came to use it, so the file goes back to the shape it had before
+  the install. The remover knew the plugin, the trait and the action, but not the token model
+  behind that `Schedule::command('model:prune', ...)`: the statement stayed, its import could not
+  be called unused while that statement used it, and the file came back reported as "still
+  mentions the package" with nothing an uninstall could do about it. A statement it does not
+  recognise as the scheduler's is still reported rather than cut blind.
+- The published migration steps over a `magic_login_tokens` table that is already there instead of
+  failing. The uninstall keeps that table unless it is told otherwise, and the install that
+  follows republishes the migration under a new name — which used to abort the whole `migrate`
+  run with "relation already exists", rather than just skipping the one file.
+
+### Added
+
+- `--drop-tokens` on the uninstall command, which drops the table without asking while leaving the
+  other confirmations in place — `--force` skips all of them. Keeping the table stays a perfectly
+  good answer, so when it is kept the command now says that its rows are still there and names the
+  flag that drops it: that is the choice a later install trips over, and the reason for it is
+  worth knowing before then.
+
+### Changed
+
+- The install command's questions now default to *yes*, so pressing Enter through it installs the
+  package — except publishing the config file, which defaults to *no*, since every option has a
+  working default without it. The defaults are what a `--no-interaction` run answers, so a
+  scripted install now wires the package up instead of printing snippets to paste; every edit is
+  still named as it happens, only ever adds to your code, and is taken back out by
+  `filament-magic-login:uninstall`.
+
 ## 1.4.0 - 2026-08-27
 
 ### Added

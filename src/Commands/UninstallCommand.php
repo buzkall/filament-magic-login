@@ -22,6 +22,7 @@ class UninstallCommand extends Command
     protected $signature = 'filament-magic-login:uninstall
         {--force : Skip every confirmation}
         {--keep-tokens : Leave the magic_login_tokens table in place}
+        {--drop-tokens : Drop the magic_login_tokens table without asking}
         {--keep-code : Do not edit panel providers or login pages}';
 
     public function __construct(
@@ -160,7 +161,7 @@ class UninstallCommand extends Command
         }
 
         if ($this->option('keep-tokens')) {
-            $this->comment(__('filament-magic-login::filament-magic-login.uninstall.table_kept', ['table' => $table]));
+            $this->keepTable($table);
 
             return;
         }
@@ -171,11 +172,8 @@ class UninstallCommand extends Command
             return;
         }
 
-        if (
-            (! $this->option('force')) &&
-            (! $this->confirm(__('filament-magic-login::filament-magic-login.uninstall.drop_table', ['table' => $table]), false))
-        ) {
-            $this->comment(__('filament-magic-login::filament-magic-login.uninstall.table_kept', ['table' => $table]));
+        if (! $this->shouldDropTable($table)) {
+            $this->keepTable($table);
 
             return;
         }
@@ -183,6 +181,30 @@ class UninstallCommand extends Command
         Schema::drop($table);
 
         $this->info(__('filament-magic-login::filament-magic-login.uninstall.table_dropped', ['table' => $table]));
+    }
+
+    protected function shouldDropTable(string $table): bool
+    {
+        if ($this->option('force') || $this->option('drop-tokens')) {
+            return true;
+        }
+
+        return $this->confirm(
+            __('filament-magic-login::filament-magic-login.uninstall.drop_table', ['table' => $table]),
+            false,
+        );
+    }
+
+    /**
+     * Says so, and says what to run to change its mind: a table left behind is what a
+     * later `install` trips over, and the reason is worth knowing before then.
+     */
+    protected function keepTable(string $table): void
+    {
+        $this->comment(__('filament-magic-login::filament-magic-login.uninstall.table_kept', ['table' => $table]));
+        $this->comment(__('filament-magic-login::filament-magic-login.uninstall.table_kept_hint', [
+            'command' => $this->getName().' --drop-tokens',
+        ]));
     }
 
     protected function deletePublishedFiles(): void

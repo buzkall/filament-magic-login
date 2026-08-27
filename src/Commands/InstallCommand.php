@@ -81,9 +81,10 @@ class InstallCommand extends Command
     {
         $published = $this->filesystem->exists(config_path('filament-magic-login.php'));
 
-        // Overwriting one you have already edited is the destructive answer, so that
-        // question defaults to no; publishing a file that is not there yet does not
-        // take anything away.
+        // The one pair of questions that defaults to no. Every option has a working
+        // default in the package's own config, so publishing the file is the step an
+        // application only wants when it means to edit it — and overwriting one it has
+        // already edited is the destructive answer besides.
         $confirmed = $published
             ? confirm(
                 label: __('filament-magic-login::filament-magic-login.install.config_overwrite'),
@@ -91,7 +92,7 @@ class InstallCommand extends Command
             )
             : confirm(
                 label: __('filament-magic-login::filament-magic-login.install.config_publish'),
-                default: true,
+                default: false,
             );
 
         if (! $confirmed) {
@@ -155,11 +156,13 @@ class InstallCommand extends Command
             return;
         }
 
-        // Defaulting to "no" is what keeps an unattended install from rewriting somebody's
-        // console routes: with no terminal to ask, Prompts answers with the default.
+        // Yes, like every other wiring step: an installer is asked to install, and each
+        // rewrite is reported and reversible by `filament-magic-login:uninstall`. With no
+        // terminal to ask, Prompts answers with the default, so an unattended install
+        // wires the package up rather than leaving it half-installed.
         if (! confirm(
             label: __('filament-magic-login::filament-magic-login.install.schedule_prompt'),
-            default: false,
+            default: true,
         )) {
             $this->explainScheduleByHand();
 
@@ -233,13 +236,11 @@ class InstallCommand extends Command
         $registered = false;
 
         foreach ($providers as $path) {
-            // Defaulting to "no" keeps an unattended install from rewriting a provider,
-            // the same guard the pruner question has.
             if (! confirm(
                 label: __('filament-magic-login::filament-magic-login.install.plugin_prompt', [
                     'path' => $this->relative($path),
                 ]),
-                default: false,
+                default: true,
             )) {
                 continue;
             }
@@ -351,13 +352,11 @@ class InstallCommand extends Command
                 continue;
             }
 
-            // Defaulting to "no" keeps an unattended install from rewriting a resource,
-            // the same guard the pruner and the plugin registration have.
             if (! confirm(
                 label: __('filament-magic-login::filament-magic-login.install.resource_prompt', [
                     'path' => $this->relative($path),
                 ]),
-                default: false,
+                default: true,
             )) {
                 continue;
             }

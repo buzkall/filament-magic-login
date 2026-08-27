@@ -8,6 +8,14 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // The package can be uninstalled and installed again, which republishes this
+        // migration under a new name while the table may still be there — the uninstall
+        // asks before dropping it, and "no" is the default. Creating it a second time
+        // would abort the whole migrate run rather than just this file.
+        if (Schema::hasTable($this->tableName())) {
+            return;
+        }
+
         Schema::create($this->tableName(), function (Blueprint $table) {
             $table->id();
             $table->morphs('authenticatable');

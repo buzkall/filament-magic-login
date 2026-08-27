@@ -265,23 +265,6 @@ it('skips the migration and pruning steps for the cache driver', function (): vo
         ->and(File::glob(database_path('migrations/*_create_magic_login_tokens_table.php')))->toBe([]);
 });
 
-it('never edits the console routes on an unattended install', function (): void {
-    config()->set('filament-magic-login.storage.driver', 'database');
-    $original = "<?php\n";
-    writeConsoleRoutes($original);
-
-    // With no terminal to ask, Prompts answers with each default — and the pruner
-    // question defaults to no precisely so this cannot rewrite somebody's source file.
-    $this->artisan('filament-magic-login:install', ['--no-interaction' => true])
-        ->expectsConfirmation(installLang('config_publish'), 'yes')
-        ->expectsConfirmation(installLang('run_migrations'), 'no')
-        ->expectsConfirmation(installLang('schedule_prompt'), 'no')
-        ->expectsOutputToContain(installLang('schedule_manual'))
-        ->assertSuccessful();
-
-    expect(File::get(consoleRoutes()))->toBe($original);
-});
-
 it('offers to register the plugin in a panel provider', function (): void {
     config()->set('filament-magic-login.storage.driver', 'database');
     writeConsoleRoutes("<?php\n");
@@ -376,7 +359,7 @@ it('reports a panel provider it cannot edit with certainty', function (): void {
     expect(File::get(panelProvider()))->toBe($original);
 });
 
-it('never edits a panel provider on an unattended install', function (): void {
+it('leaves a panel provider alone when the registration is declined', function (): void {
     config()->set('filament-magic-login.storage.driver', 'database');
     writeConsoleRoutes("<?php\n");
     writePanelProvider(stockPanelChain());
@@ -482,8 +465,7 @@ it('never edits a resource without a terminal to ask', function (): void {
     $table = File::get(usersTablePath());
     $page = File::get(viewUserPath());
 
-    // With no terminal to ask, Prompts answers with each default — and the resource
-    // questions default to no precisely so this cannot rewrite somebody's source.
+    // Answered no: a resource the installer offers to wire is left exactly as it was.
     $this->artisan('filament-magic-login:install', ['--no-interaction' => true])
         ->expectsConfirmation(installLang('config_publish'), 'yes')
         ->expectsConfirmation(installLang('run_migrations'), 'no')

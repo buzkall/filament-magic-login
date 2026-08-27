@@ -3,6 +3,7 @@
 namespace Arzcode\FilamentMagicLogin\Support;
 
 use Arzcode\FilamentMagicLogin\Data\CleanedSource;
+use Closure;
 use ParseError;
 
 /**
@@ -26,6 +27,12 @@ final class PackageReferenceRemover
 
     private const ACTION_CLASS = 'SendMagicLinkAction';
 
+    /**
+     * Not registered by hand, but written into `routes/console.php` by the installer's
+     * pruning step, and the only other name of ours an application's own files carry.
+     */
+    private const MODEL_CLASS = 'MagicLoginToken';
+
     public function remove(string $code): CleanedSource
     {
         if (! str_contains($code, self::NAMESPACE)) {
@@ -34,6 +41,7 @@ final class PackageReferenceRemover
 
         $cleaned = $this->removeActionEntries($this->removePluginRegistrations($code));
         $cleaned = $this->removeTraitUses($cleaned);
+        $cleaned = $this->removeScheduledPrunes($cleaned);
         $cleaned = $this->removeUnusedImports($cleaned);
 
         if (! $this->isParsable($cleaned)) {
@@ -71,7 +79,8 @@ final class PackageReferenceRemover
                 str_contains($token['text'], self::NAMESPACE) ||
                 str_contains($token['text'], self::PLUGIN_CLASS) ||
                 str_contains($token['text'], self::TRAIT_CLASS) ||
-                str_contains($token['text'], self::ACTION_CLASS)
+                str_contains($token['text'], self::ACTION_CLASS) ||
+                str_contains($token['text'], self::MODEL_CLASS)
             ) {
                 $lines[] = $token['line'];
             }
@@ -363,6 +372,116 @@ final class PackageReferenceRemover
     }
 
     /**
+     * Removes the scheduled pruner the installer wrote into `routes/console.php`.
+     *
+     * A `Schedule::command(...)` naming our token model is dead the moment the package
+     * goes, and its import cannot be dropped while that statement still uses it — which
+     * is what used to leave the file reported as "mentions the package" with nothing an
+     * uninstall could do about it.
+     */
+    private function removeScheduledPrunes(string $code): string
+    {
+        $aliases = $this->aliasesFor($code, self::MODEL_CLASS);
+        $original = $code;
+
+        while (true) {
+            $tokens = $this->tokens($code);
+            $range = $this->findScheduleStatementRange($tokens, $aliases);
+
+            if ($range === null) {
+                break;
+            }
+
+            $code = $this->cutStatement($tokens, $range[0], $range[1]);
+        }
+
+        if ($code === $original) {
+            return $code;
+        }
+
+        // The installer imported Schedule for that block; where nothing else came to
+        // use it, the file goes back to exactly the shape it had before.
+        return $this->removeUnusedImportsMatching(
+            $code,
+            fn (string $name): bool => $name === ScheduleWriter::SCHEDULE_CLASS,
+        );
+    }
+
+    /**
+     * @param  array<int, array{id: int|null, text: string, line: int}>  $tokens
+     * @param  array<int, string>  $aliases
+     * @return array{0: int, 1: int}|null
+     */
+    private function findScheduleStatementRange(array $tokens, array $aliases): ?array
+    {
+        foreach ($tokens as $index => $token) {
+            if (! $this->mentions($token['text'], $aliases)) {
+                continue;
+            }
+
+            $start = $this->statementStart($tokens, $index);
+            $end = $this->statementEnd($tokens, $index);
+
+            if ($start === null || $end === null) {
+                continue;
+            }
+
+            // The import itself is removeUnusedImports()'s to take, once this has left
+            // nothing using it.
+            if ($tokens[$start]['id'] === T_USE) {
+                continue;
+            }
+
+            // Only a statement that is a call on the scheduler, in either of the shapes
+            // Laravel offers. Anything else mentioning the model is reported instead.
+            if (! $this->isSchedulerStatement($tokens, $start)) {
+                continue;
+            }
+
+            return [$start, $end];
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<int, array{id: int|null, text: string, line: int}>  $tokens
+     */
+    private function isSchedulerStatement(array $tokens, int $start): bool
+    {
+        $head = $tokens[$start];
+
+        if ($head['id'] === T_VARIABLE) {
+            return $head['text'] === '$schedule';
+        }
+
+        return $head['text'] === 'Schedule' || str_ends_with($head['text'], '\\Schedule');
+    }
+
+    /**
+     * The first token of the statement a token belongs to.
+     *
+     * @param  array<int, array{id: int|null, text: string, line: int}>  $tokens
+     */
+    private function statementStart(array $tokens, int $index): ?int
+    {
+        for ($cursor = $index; $cursor >= 0; $cursor--) {
+            $token = $tokens[$cursor];
+
+            if (
+                $token['text'] === ';' ||
+                $token['text'] === '{' ||
+                $token['text'] === '}' ||
+                $token['id'] === T_OPEN_TAG
+            ) {
+                return $this->nextMeaningful($tokens, $cursor + 1);
+            }
+        }
+
+        return $this->nextMeaningful($tokens, 0);
+    }
+
+    /**
      * Removes `use HasMagicLinkAction;` statements from inside a class body.
      */
     private function removeTraitUses(string $code): string
@@ -456,9 +575,20 @@ final class PackageReferenceRemover
      */
     private function removeUnusedImports(string $code): string
     {
+        return $this->removeUnusedImportsMatching(
+            $code,
+            fn (string $name): bool => str_contains($name, self::NAMESPACE),
+        );
+    }
+
+    /**
+     * @param  Closure(string): bool  $matches
+     */
+    private function removeUnusedImportsMatching(string $code, Closure $matches): string
+    {
         do {
             $tokens = $this->tokens($code);
-            $range = $this->findUnusedImportRange($tokens);
+            $range = $this->findUnusedImportRange($tokens, $matches);
 
             if ($range === null) {
                 return $code;
@@ -470,9 +600,10 @@ final class PackageReferenceRemover
 
     /**
      * @param  array<int, array{id: int|null, text: string, line: int}>  $tokens
+     * @param  Closure(string): bool  $matches
      * @return array{0: int, 1: int}|null
      */
-    private function findUnusedImportRange(array $tokens): ?array
+    private function findUnusedImportRange(array $tokens, Closure $matches): ?array
     {
         $depth = 0;
 
@@ -501,7 +632,7 @@ final class PackageReferenceRemover
                 }
             }
 
-            if ($name === null || ! str_contains($name, self::NAMESPACE)) {
+            if ($name === null || ! $matches(ltrim($name, '\\'))) {
                 continue;
             }
 
@@ -722,6 +853,7 @@ final class PackageReferenceRemover
     private function cutStatement(array $tokens, int $start, int $end): string
     {
         $code = '';
+        $before = 0;
 
         foreach ($tokens as $index => $token) {
             if ($index >= $start && $index <= $end) {
@@ -731,13 +863,24 @@ final class PackageReferenceRemover
             if ($index === $start - 1 && $token['id'] === T_WHITESPACE) {
                 $position = strrpos($token['text'], "\n");
 
-                $code .= $position === false ? $token['text'] : substr($token['text'], 0, $position + 1);
+                $kept = $position === false ? $token['text'] : substr($token['text'], 0, $position + 1);
+                $before = substr_count($kept, "\n");
+
+                $code .= $kept;
 
                 continue;
             }
 
             if ($index === $end + 1 && $token['id'] === T_WHITESPACE) {
-                $code .= preg_replace('/\n/', '', $token['text'], 1) ?? $token['text'];
+                // The line the statement occupied, and then any blank line the two sides
+                // would otherwise have contributed one each of.
+                $kept = preg_replace('/\n/', '', $token['text'], 1) ?? $token['text'];
+
+                while (($before + substr_count($kept, "\n")) > 2 && str_contains($kept, "\n")) {
+                    $kept = preg_replace('/\n/', '', $kept, 1) ?? $kept;
+                }
+
+                $code .= $kept;
 
                 continue;
             }
@@ -758,6 +901,18 @@ final class PackageReferenceRemover
         $result = '';
 
         foreach ($tokens as $index => $token) {
+            // A statement cut from the end of a file leaves the blank line that preceded
+            // it as the file's last line.
+            if (
+                $token['id'] === T_WHITESPACE &&
+                $index === count($tokens) - 1 &&
+                str_contains($token['text'], "\n")
+            ) {
+                $result .= "\n";
+
+                continue;
+            }
+
             if (
                 $token['id'] === T_WHITESPACE &&
                 $index > 0 &&

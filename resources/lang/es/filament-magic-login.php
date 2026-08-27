@@ -120,6 +120,7 @@ return [
         'table_dropped' => 'Se ha eliminado la tabla [:table].',
         'table_missing' => 'No hay ninguna tabla [:table] que eliminar.',
         'table_kept' => 'Se ha conservado la tabla [:table].',
+        'table_kept_hint' => 'Sus filas siguen ahí, y al volver a instalar el paquete se encontrará la tabla ya creada. Para eliminarla: php artisan :command',
         'cache_note' => 'El driver de almacenamiento es "cache": los enlaces guardados caducan solos, no hay nada que eliminar.',
         'deleted' => 'Se ha borrado [:path].',
         'missing' => 'No hay nada publicado en [:path].',

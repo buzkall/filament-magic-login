@@ -234,3 +234,63 @@ it('strips the action out of a resource table and a record page', function (): v
 
     File::deleteDirectory(app_path('Filament'));
 });
+
+it('strips the scheduled pruner out of the console routes', function (): void {
+    $routes = base_path('routes/console.php');
+
+    File::ensureDirectoryExists(dirname($routes));
+    File::put($routes, <<<'PHP'
+    <?php
+
+    use Arzcode\FilamentMagicLogin\Models\MagicLoginToken;
+    use Illuminate\Support\Facades\Schedule;
+
+    Schedule::command('model:prune', [
+        '--model' => [MagicLoginToken::class],
+    ])->daily();
+    PHP);
+
+    $this->artisan('filament-magic-login:uninstall', ['--force' => true])
+        ->expectsOutputToContain(__('filament-magic-login::filament-magic-login.uninstall.code_updated', [
+            'path' => 'routes/console.php',
+        ]))
+        // Nothing left to remove by hand, which is what this used to report.
+        ->doesntExpectOutputToContain(__('filament-magic-login::filament-magic-login.uninstall.code_manual', [
+            'path' => 'routes/console.php',
+            'lines' => '3',
+        ]))
+        ->assertSuccessful();
+
+    $rewritten = File::get($routes);
+
+    expect($rewritten)->not->toContain('MagicLoginToken')
+        ->and($rewritten)->not->toContain('Schedule')
+        ->and(php_syntax_ok($rewritten))->toBeTrue();
+
+    File::delete($routes);
+});
+
+it('drops the table without asking with --drop-tokens', function (): void {
+    publishPackageFiles();
+
+    $this->artisan('filament-magic-login:uninstall', ['--drop-tokens' => true])
+        ->expectsConfirmation(lang('confirm'), 'yes')
+        ->expectsOutputToContain(lang('table_dropped', ['table' => 'magic_login_tokens']))
+        ->assertSuccessful();
+
+    expect(Schema::hasTable('magic_login_tokens'))->toBeFalse();
+});
+
+it('says how to drop the table it kept', function (): void {
+    publishPackageFiles();
+
+    $this->artisan('filament-magic-login:uninstall')
+        ->expectsConfirmation(lang('confirm'), 'yes')
+        ->expectsConfirmation(lang('drop_table', ['table' => 'magic_login_tokens']), 'no')
+        ->expectsOutputToContain(lang('table_kept_hint', [
+            'command' => 'filament-magic-login:uninstall --drop-tokens',
+        ]))
+        ->assertSuccessful();
+
+    expect(Schema::hasTable('magic_login_tokens'))->toBeTrue();
+});

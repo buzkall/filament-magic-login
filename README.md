@@ -37,10 +37,15 @@ to schedule the token pruner in `routes/console.php`. It then offers to register
 panel for you, which is the step that puts the action on your login page, and finally to add the
 ["send a login link" action](#sending-a-link-to-a-user) to your user resource.
 
-Every step is a question and every one can be declined; nothing here is mandatory. Skip the config
-file and the package defaults apply. The two questions that edit your own code — the pruner and the
-plugin registration — default to *no*, so with no terminal to answer them (CI, a Docker build) the
-command prints the snippet instead of editing anything. It also stays quiet about whatever is
+Every step is a question and every one can be declined; nothing here is mandatory. Each one
+defaults to *yes* — pressing Enter through the command installs the package — except publishing the
+config file, which defaults to *no*: every option has a working default in the package, so that
+file is only worth having when you mean to edit it, and the defaults still apply without it.
+
+Because the answers are the defaults, running it with `--no-interaction` (CI, a Docker build) wires
+everything up unattended. Every edit it makes is named as it happens, only ever adds to your code,
+and `filament-magic-login:uninstall` takes it all back out again; anything it cannot rewrite with
+certainty is printed for you to paste rather than guessed at. It also stays quiet about whatever is
 already in place, so re-running the command is safe.
 
 **Your `users` table is never touched.**
@@ -56,19 +61,24 @@ The uninstall command undoes what the install command did, in the order that lea
 application working at every step:
 
 1. Removes `->plugin(MagicLoginPlugin::make())` from your panel providers, the
-   `HasMagicLinkAction` trait from any custom login page, and `SendMagicLinkAction::make()` from
-   whichever action arrays hold it, along with the now-unused imports. Without this,
-   `composer remove` would leave your source pointing at classes that no longer exist and every
-   request would fail. An array left with nothing in it is kept rather than deleted — a
-   `getHeaderActions()` still has to return one.
+   `HasMagicLinkAction` trait from any custom login page, `SendMagicLinkAction::make()` from
+   whichever action arrays hold it, and the scheduled pruner from `routes/console.php`, along with
+   the now-unused imports — Laravel's own `Schedule` import included, where nothing else came to
+   use it. Without this, `composer remove` would leave your source pointing at classes that no
+   longer exist and every request would fail. An array left with nothing in it is kept rather than
+   deleted — a `getHeaderActions()` still has to return one.
 2. Drops the `magic_login_tokens` table.
 3. Deletes the published config, migration and translations.
 
-Both destructive steps are confirmed first.
+Both destructive steps are confirmed first, and the table question defaults to *no*. Keeping the
+table is a fine answer — installing the package again finds it in place and the migration it
+republishes steps over it rather than failing — but it does mean the old tokens are still there,
+so the command says as much and names the flag that drops it.
 
 | Option | Effect |
 |---|---|
 | `--force` | Skip every confirmation (for CI or scripted teardown). |
+| `--drop-tokens` | Drop the table without asking, keeping the other confirmations. |
 | `--keep-tokens` | Leave the table and its rows alone. |
 | `--keep-code` | Do not touch your source; report the panels to unwire by hand instead. |
 

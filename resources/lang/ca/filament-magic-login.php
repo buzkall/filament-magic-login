@@ -120,6 +120,7 @@ return [
         'table_dropped' => 'S\'ha eliminat la taula [:table].',
         'table_missing' => 'No hi ha cap taula [:table] per eliminar.',
         'table_kept' => 'S\'ha conservat la taula [:table].',
+        'table_kept_hint' => 'Les seves files encara hi són, i en tornar a instal·lar el paquet es trobarà la taula ja creada. Per eliminar-la: php artisan :command',
         'cache_note' => 'El driver d\'emmagatzematge és "cache": els enllaços desats caduquen sols, no hi ha res per eliminar.',
         'deleted' => 'S\'ha esborrat [:path].',
         'missing' => 'No hi ha res publicat a [:path].',

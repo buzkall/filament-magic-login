@@ -120,6 +120,7 @@ return [
         'table_dropped' => 'Dropped the [:table] table.',
         'table_missing' => 'No [:table] table to drop.',
         'table_kept' => 'Kept the [:table] table.',
+        'table_kept_hint' => 'Its rows are still there, and installing the package again will find the table in place. To drop it: php artisan :command',
         'cache_note' => 'Storage driver is "cache": stored links expire on their own, there is nothing to drop.',
         'deleted' => 'Deleted [:path].',
         'missing' => 'Nothing published at [:path].',

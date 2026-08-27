@@ -450,3 +450,105 @@ it('reports an action held in a variable rather than guessing', function (): voi
     expect($result->changed)->toBeFalse()
         ->and($result->unresolvedLines)->not->toBe([]);
 });
+
+it('removes the scheduled pruner from console routes, and the imports it needed', function (): void {
+    $code = <<<'PHP'
+    <?php
+
+    use Arzcode\FilamentMagicLogin\Models\MagicLoginToken;
+    use Illuminate\Foundation\Inspiring;
+    use Illuminate\Support\Facades\Artisan;
+    use Illuminate\Support\Facades\Schedule;
+
+    Artisan::command('inspire', function () {
+        $this->comment(Inspiring::quote());
+    })->purpose('Display an inspiring quote');
+
+    Schedule::command('model:prune', [
+        '--model' => [MagicLoginToken::class],
+    ])->daily();
+    PHP;
+
+    $result = clean($code);
+
+    // Back to the file Laravel ships, which is what it was before the install.
+    expect($result->code)->toBe(<<<'PHP'
+    <?php
+
+    use Illuminate\Foundation\Inspiring;
+    use Illuminate\Support\Facades\Artisan;
+
+    Artisan::command('inspire', function () {
+        $this->comment(Inspiring::quote());
+    })->purpose('Display an inspiring quote');
+
+    PHP)
+        ->and($result->changed)->toBeTrue()
+        // Nothing left for the developer to remove by hand.
+        ->and($result->isClean())->toBeTrue();
+});
+
+it('keeps the Schedule import when something else still schedules', function (): void {
+    $code = <<<'PHP'
+    <?php
+
+    use Arzcode\FilamentMagicLogin\Models\MagicLoginToken;
+    use Illuminate\Support\Facades\Schedule;
+
+    Schedule::command('model:prune', [
+        '--model' => [MagicLoginToken::class],
+    ])->daily();
+
+    Schedule::command('orders:ship')->hourly();
+    PHP;
+
+    $result = clean($code);
+
+    expect($result->code)->toBe(<<<'PHP'
+    <?php
+
+    use Illuminate\Support\Facades\Schedule;
+
+    Schedule::command('orders:ship')->hourly();
+    PHP)
+        ->and($result->isClean())->toBeTrue();
+});
+
+it('removes the pruner from a withSchedule closure too', function (): void {
+    $code = <<<'PHP'
+    <?php
+
+    use Arzcode\FilamentMagicLogin\Models\MagicLoginToken;
+    use Illuminate\Console\Scheduling\Schedule;
+    use Illuminate\Foundation\Application;
+
+    return Application::configure(basePath: dirname(__DIR__))
+        ->withSchedule(function (Schedule $schedule) {
+            $schedule->command('model:prune', ['--model' => [MagicLoginToken::class]])->daily();
+        })
+        ->create();
+    PHP;
+
+    $result = clean($code);
+
+    // The closure's own type hint still uses Schedule, so that import stays.
+    expect($result->code)->toContain('use Illuminate\Console\Scheduling\Schedule;')
+        ->not->toContain('MagicLoginToken')
+        ->and($result->isClean())->toBeTrue();
+});
+
+it('reports a pruner it cannot recognise rather than cutting a statement blind', function (): void {
+    $code = <<<'PHP'
+    <?php
+
+    use Arzcode\FilamentMagicLogin\Models\MagicLoginToken;
+
+    $expired = MagicLoginToken::query()->whereNotNull('used_at')->count();
+    PHP;
+
+    $result = clean($code);
+
+    expect($result->code)->toBe($code)
+        ->and($result->changed)->toBeFalse()
+        ->and($result->unresolvedLines)->toBe([3, 5]);
+});
