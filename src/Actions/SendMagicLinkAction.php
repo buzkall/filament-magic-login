@@ -62,7 +62,7 @@ class SendMagicLinkAction extends Action
         // In a table row the action shows as an icon button (see getView()), which has no
         // label to read, so give it the label as a hover tooltip. Page-header actions keep
         // their label and need none.
-        $this->tooltip(fn (): ?string => $this->hasTable() ? $this->getLabel() : null);
+        $this->tooltip(fn (SendMagicLinkAction $action): ?string => $action->isInTable() ? $action->getLabel() : null);
 
         // Not requiresConfirmation(): that switches to the centred, warning-icon layout
         // meant for a bare yes/no, which reads badly around a field. These give the same
@@ -102,11 +102,19 @@ class SendMagicLinkAction extends Action
      */
     public function getView(): string
     {
-        if (! isset($this->view) && $this->hasTable()) {
+        if (! isset($this->view) && $this->isInTable()) {
             return static::ICON_BUTTON_VIEW;
         }
 
         return parent::getView();
+    }
+
+    /**
+     * Not hasTable(): that only arrived in a later 5.x, and the package supports ^5.0.
+     */
+    public function isInTable(): bool
+    {
+        return $this->getTable() !== null;
     }
 
     public function panel(string|Closure|null $panelId): static
