@@ -83,3 +83,46 @@ it('evaluates closure options lazily', function (): void {
     expect($plugin->getExpiresAfterMinutes())->toBe(30)
         ->and($plugin->getLabel())->toBe('Lazy label');
 });
+
+it('falls back through the admin expiry chain, setter to config to panel lifetime', function (): void {
+    // Nothing configured: the panel's own link lifetime applies to the admin modal too.
+    expect(MagicLoginPlugin::make()->getAdminExpiresAfterMinutes())->toBe(15);
+
+    // An application that only says ->expiresAfter(30) means it everywhere.
+    expect(MagicLoginPlugin::make()->expiresAfter(30)->getAdminExpiresAfterMinutes())->toBe(30);
+
+    config()->set('filament-magic-login.admin.expires_after_minutes', 45);
+
+    expect(MagicLoginPlugin::make()->expiresAfter(30)->getAdminExpiresAfterMinutes())->toBe(45);
+
+    // The setter still wins over both.
+    expect(MagicLoginPlugin::make()->adminExpiresAfter(90)->getAdminExpiresAfterMinutes())->toBe(90);
+});
+
+it('reads the admin defaults from config', function (): void {
+    $plugin = MagicLoginPlugin::make();
+
+    expect($plugin->getMaxAdminExpiresAfterMinutes())->toBe(4320)
+        ->and($plugin->getExpiryPresets())->toBe([15, 60, 480, 1440, 4320])
+        ->and($plugin->getAdminRateLimitMaxAttempts())->toBe(10)
+        ->and($plugin->getAdminRateLimitDecaySeconds())->toBe(60)
+        ->and($plugin->getAdminAbility())->toBeNull();
+});
+
+it('lets the panel override every admin default', function (): void {
+    $plugin = MagicLoginPlugin::make()
+        ->maxAdminExpiresAfter(120)
+        ->expiryPresets([5, 30])
+        ->adminRateLimit(maxAttempts: 2, decaySeconds: 30)
+        ->adminAbility('sendMagicLink');
+
+    expect($plugin->getMaxAdminExpiresAfterMinutes())->toBe(120)
+        ->and($plugin->getExpiryPresets())->toBe([5, 30])
+        ->and($plugin->getAdminRateLimitMaxAttempts())->toBe(2)
+        ->and($plugin->getAdminRateLimitDecaySeconds())->toBe(30)
+        ->and($plugin->getAdminAbility())->toBe('sendMagicLink');
+});
+
+it('treats a blank admin ability as none at all', function (): void {
+    expect(MagicLoginPlugin::make()->adminAbility('')->getAdminAbility())->toBeNull();
+});

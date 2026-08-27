@@ -102,6 +102,12 @@ return [
         'plugin_added' => 'S\'ha afegit el plugin a [:path].',
         'plugin_failed' => 'No s\'ha pogut editar [:path] amb seguretat, així que s\'ha deixat intacte.',
         'plugin_manual' => 'Registra el plugin al tauler on el vulguis:',
+        'resource_prompt' => 'Vols afegir l\'acció "envia un enllaç d\'accés" a [:path]?',
+        'resource_added' => 'Afegida l\'acció a [:path].',
+        'resource_exists' => 'L\'acció ja és a [:path].',
+        'resource_failed' => 'No s\'ha pogut editar [:path] amb seguretat, així que s\'ha deixat intacte.',
+        'resource_missing' => 'No s\'ha trobat un únic recurs de Filament per a [:model], així que no s\'ha canviat res.',
+        'resource_manual' => 'Afegeix tu mateix l\'acció al teu recurs d\'usuaris:',
         'done' => 'filament-magic-login s\'ha instal\'lat.',
     ],
 

@@ -102,6 +102,12 @@ return [
         'plugin_added' => 'Se ha añadido el plugin a [:path].',
         'plugin_failed' => 'No se ha podido editar [:path] con seguridad, así que se ha dejado intacto.',
         'plugin_manual' => 'Registra el plugin en el panel donde lo quieras:',
+        'resource_prompt' => '¿Añadir la acción "enviar un enlace de acceso" a [:path]?',
+        'resource_added' => 'Añadida la acción a [:path].',
+        'resource_exists' => 'La acción ya está en [:path].',
+        'resource_failed' => 'No se pudo editar [:path] con seguridad, así que se dejó intacto.',
+        'resource_missing' => 'No se encontró un único recurso de Filament para [:model], así que no se cambió nada.',
+        'resource_manual' => 'Añade tú mismo la acción a tu recurso de usuarios:',
         'done' => 'filament-magic-login se ha instalado.',
     ],
 

@@ -1,5 +1,6 @@
 <?php
 
+use Arzcode\FilamentMagicLogin\Tests\Fixtures\Models\User;
 use Illuminate\Support\Facades\File;
 
 function installLang(string $key, array $replace = []): string
@@ -64,6 +65,99 @@ function stockPanelChain(): string
  * PendingCommand to run from the destructor, which can publish files after the test
  * that made them has already finished.
  */
+function userResourcePath(): string
+{
+    return app_path('Filament/Resources/Users/UserResource.php');
+}
+
+function usersTablePath(): string
+{
+    return app_path('Filament/Resources/Users/Tables/UsersTable.php');
+}
+
+function viewUserPath(): string
+{
+    return app_path('Filament/Resources/Users/Pages/ViewUser.php');
+}
+
+/**
+ * Writes the shape `make:filament-resource` generates: a resource that hands its table
+ * off to an extracted class, and a record page with its own header actions.
+ */
+function writeUserResource(): void
+{
+    $model = User::class;
+
+    File::ensureDirectoryExists(dirname(userResourcePath()));
+    File::put(userResourcePath(), <<<PHP
+    <?php
+
+    namespace App\Filament\Resources\Users;
+
+    use App\Filament\Resources\Users\Tables\UsersTable;
+    use Filament\Resources\Resource;
+    use Filament\Tables\Table;
+    use {$model};
+
+    class UserResource extends Resource
+    {
+        protected static ?string \$model = User::class;
+
+        public static function table(Table \$table): Table
+        {
+            return UsersTable::configure(\$table);
+        }
+    }
+
+    PHP);
+
+    File::ensureDirectoryExists(dirname(usersTablePath()));
+    File::put(usersTablePath(), <<<'PHP'
+    <?php
+
+    namespace App\Filament\Resources\Users\Tables;
+
+    use Filament\Actions\EditAction;
+    use Filament\Tables\Table;
+
+    class UsersTable
+    {
+        public static function configure(Table $table): Table
+        {
+            return $table
+                ->recordActions([
+                    EditAction::make(),
+                ]);
+        }
+    }
+
+    PHP);
+
+    File::ensureDirectoryExists(dirname(viewUserPath()));
+    File::put(viewUserPath(), <<<'PHP'
+    <?php
+
+    namespace App\Filament\Resources\Users\Pages;
+
+    use App\Filament\Resources\Users\UserResource;
+    use Filament\Actions\EditAction;
+    use Filament\Resources\Pages\ViewRecord;
+
+    class ViewUser extends ViewRecord
+    {
+        protected static string $resource = UserResource::class;
+
+        protected function getHeaderActions(): array
+        {
+            return [
+                EditAction::make(),
+            ];
+        }
+    }
+
+    PHP);
+}
+
 function cleanInstalledFiles(): void
 {
     File::delete(config_path('filament-magic-login.php'));
@@ -75,6 +169,7 @@ function cleanInstalledFiles(): void
     // Only ever removes what these tests wrote: the skeleton application ships no
     // PHP files of its own under app/.
     File::deleteDirectory(app_path('Providers'));
+    File::deleteDirectory(app_path('Filament'));
 }
 
 beforeEach(function (): void {
@@ -327,4 +422,120 @@ it('skips the config file when it is declined', function (): void {
         ->assertSuccessful();
 
     expect(File::exists(config_path('filament-magic-login.php')))->toBeFalse();
+});
+
+it('offers to add the action to the user resource table and its record pages', function (): void {
+    config()->set('filament-magic-login.storage.driver', 'database');
+    writeConsoleRoutes("<?php\n");
+    writeUserResource();
+
+    $this->artisan('filament-magic-login:install')
+        ->expectsConfirmation(installLang('config_publish'), 'yes')
+        ->expectsConfirmation(installLang('run_migrations'), 'no')
+        ->expectsConfirmation(installLang('schedule_prompt'), 'no')
+        ->expectsConfirmation(installLang('resource_prompt', ['path' => 'app/Filament/Resources/Users/Tables/UsersTable.php']), 'yes')
+        ->expectsConfirmation(installLang('resource_prompt', ['path' => 'app/Filament/Resources/Users/Pages/ViewUser.php']), 'yes')
+        ->assertSuccessful();
+
+    expect(File::get(usersTablePath()))
+        ->toContain('use Arzcode\FilamentMagicLogin\Actions\SendMagicLinkAction;')
+        ->toContain("                EditAction::make(),\n                SendMagicLinkAction::make(),");
+
+    expect(File::get(viewUserPath()))
+        ->toContain('use Arzcode\FilamentMagicLogin\Actions\SendMagicLinkAction;')
+        ->toContain("            EditAction::make(),\n            SendMagicLinkAction::make(),");
+
+    // The resource itself owns neither array, so it is left alone.
+    expect(File::get(userResourcePath()))->not->toContain('SendMagicLinkAction');
+
+    expect(php_syntax_ok(File::get(usersTablePath())))->toBeTrue()
+        ->and(php_syntax_ok(File::get(viewUserPath())))->toBeTrue();
+});
+
+it('leaves the resource untouched when the offer is declined', function (): void {
+    config()->set('filament-magic-login.storage.driver', 'database');
+    writeConsoleRoutes("<?php\n");
+    writeUserResource();
+
+    $table = File::get(usersTablePath());
+    $page = File::get(viewUserPath());
+
+    $this->artisan('filament-magic-login:install')
+        ->expectsConfirmation(installLang('config_publish'), 'yes')
+        ->expectsConfirmation(installLang('run_migrations'), 'no')
+        ->expectsConfirmation(installLang('schedule_prompt'), 'no')
+        ->expectsConfirmation(installLang('resource_prompt', ['path' => 'app/Filament/Resources/Users/Tables/UsersTable.php']), 'no')
+        ->expectsConfirmation(installLang('resource_prompt', ['path' => 'app/Filament/Resources/Users/Pages/ViewUser.php']), 'no')
+        ->expectsOutputToContain(installLang('resource_manual'))
+        ->expectsOutputToContain('SendMagicLinkAction::make()')
+        ->assertSuccessful();
+
+    expect(File::get(usersTablePath()))->toBe($table)
+        ->and(File::get(viewUserPath()))->toBe($page);
+});
+
+it('never edits a resource without a terminal to ask', function (): void {
+    config()->set('filament-magic-login.storage.driver', 'database');
+    writeConsoleRoutes("<?php\n");
+    writeUserResource();
+
+    $table = File::get(usersTablePath());
+    $page = File::get(viewUserPath());
+
+    // With no terminal to ask, Prompts answers with each default — and the resource
+    // questions default to no precisely so this cannot rewrite somebody's source.
+    $this->artisan('filament-magic-login:install', ['--no-interaction' => true])
+        ->expectsConfirmation(installLang('config_publish'), 'yes')
+        ->expectsConfirmation(installLang('run_migrations'), 'no')
+        ->expectsConfirmation(installLang('schedule_prompt'), 'no')
+        ->expectsConfirmation(installLang('resource_prompt', ['path' => 'app/Filament/Resources/Users/Tables/UsersTable.php']), 'no')
+        ->expectsConfirmation(installLang('resource_prompt', ['path' => 'app/Filament/Resources/Users/Pages/ViewUser.php']), 'no')
+        ->assertSuccessful();
+
+    expect(File::get(usersTablePath()))->toBe($table)
+        ->and(File::get(viewUserPath()))->toBe($page);
+});
+
+it('stays quiet about a resource that already has the action', function (): void {
+    config()->set('filament-magic-login.storage.driver', 'database');
+    writeConsoleRoutes("<?php\n");
+    writeUserResource();
+
+    foreach ([usersTablePath(), viewUserPath()] as $path) {
+        File::put($path, str_replace(
+            'EditAction::make(),',
+            "EditAction::make(),\n                \Arzcode\FilamentMagicLogin\Actions\SendMagicLinkAction::make(),",
+            File::get($path),
+        ));
+    }
+
+    // An unexpected confirmation would fail the test, which is the assertion that
+    // re-running the installer stays quiet.
+    $this->artisan('filament-magic-login:install')
+        ->expectsConfirmation(installLang('config_publish'), 'yes')
+        ->expectsConfirmation(installLang('run_migrations'), 'no')
+        ->expectsConfirmation(installLang('schedule_prompt'), 'no')
+        ->expectsOutputToContain(installLang('resource_exists', ['path' => 'app/Filament/Resources/Users/Tables/UsersTable.php']))
+        ->assertSuccessful();
+});
+
+it('reports rather than guesses when two resources claim the same model', function (): void {
+    config()->set('filament-magic-login.storage.driver', 'database');
+    writeConsoleRoutes("<?php\n");
+    writeUserResource();
+
+    File::put(app_path('Filament/Resources/Users/StaffResource.php'), str_replace(
+        'class UserResource',
+        'class StaffResource',
+        File::get(userResourcePath()),
+    ));
+
+    $this->artisan('filament-magic-login:install')
+        ->expectsConfirmation(installLang('config_publish'), 'yes')
+        ->expectsConfirmation(installLang('run_migrations'), 'no')
+        ->expectsConfirmation(installLang('schedule_prompt'), 'no')
+        ->expectsOutputToContain(installLang('resource_manual'))
+        ->assertSuccessful();
+
+    expect(File::get(usersTablePath()))->not->toContain('SendMagicLinkAction');
 });

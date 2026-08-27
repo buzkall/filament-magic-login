@@ -102,6 +102,12 @@ return [
         'plugin_added' => 'Added the plugin to [:path].',
         'plugin_failed' => 'Could not edit [:path] safely, so it was left untouched.',
         'plugin_manual' => 'Register the plugin on the panel you want it on:',
+        'resource_prompt' => 'Add the "send a login link" action to [:path]?',
+        'resource_added' => 'Added the action to [:path].',
+        'resource_exists' => 'The action is already in [:path].',
+        'resource_failed' => 'Could not edit [:path] safely, so it was left untouched.',
+        'resource_missing' => 'Found no single Filament resource for [:model], so nothing was changed.',
+        'resource_manual' => 'Add the action to your user resource yourself:',
         'done' => 'filament-magic-login has been installed.',
     ],
 

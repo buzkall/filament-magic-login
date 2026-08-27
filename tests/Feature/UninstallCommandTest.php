@@ -165,3 +165,72 @@ it('reports a missing table instead of failing', function (): void {
         ->expectsOutputToContain(lang('table_missing', ['table' => 'magic_login_tokens']))
         ->assertSuccessful();
 });
+
+it('strips the action out of a resource table and a record page', function (): void {
+    $table = app_path('Filament/Resources/Users/Tables/UsersTable.php');
+    $page = app_path('Filament/Resources/Users/Pages/ViewUser.php');
+
+    File::ensureDirectoryExists(dirname($table));
+    File::put($table, <<<'PHP'
+    <?php
+
+    namespace App\Filament\Resources\Users\Tables;
+
+    use Arzcode\FilamentMagicLogin\Actions\SendMagicLinkAction;
+    use Filament\Actions\EditAction;
+    use Filament\Tables\Table;
+
+    class UsersTable
+    {
+        public static function configure(Table $table): Table
+        {
+            return $table
+                ->recordActions([
+                    EditAction::make(),
+                    SendMagicLinkAction::make(),
+                ]);
+        }
+    }
+    PHP);
+
+    File::ensureDirectoryExists(dirname($page));
+    File::put($page, <<<'PHP'
+    <?php
+
+    namespace App\Filament\Resources\Users\Pages;
+
+    use Arzcode\FilamentMagicLogin\Actions\SendMagicLinkAction;
+    use Filament\Resources\Pages\ViewRecord;
+
+    class ViewUser extends ViewRecord
+    {
+        protected function getHeaderActions(): array
+        {
+            return [
+                SendMagicLinkAction::make(),
+            ];
+        }
+    }
+    PHP);
+
+    $this->artisan('filament-magic-login:uninstall', ['--force' => true])
+        ->expectsOutputToContain(__('filament-magic-login::filament-magic-login.uninstall.code_updated', [
+            'path' => 'app/Filament/Resources/Users/Tables/UsersTable.php',
+        ]))
+        ->assertSuccessful();
+
+    expect(File::get($table))
+        ->not->toContain('SendMagicLinkAction')
+        ->not->toContain('Arzcode')
+        ->toContain('EditAction::make(),')
+        ->and(php_syntax_ok(File::get($table)))->toBeTrue();
+
+    expect(File::get($page))
+        ->not->toContain('SendMagicLinkAction')
+        ->not->toContain('Arzcode')
+        // The method must still return an array, so the empty one stays behind.
+        ->toContain('return [')
+        ->and(php_syntax_ok(File::get($page)))->toBeTrue();
+
+    File::deleteDirectory(app_path('Filament'));
+});
