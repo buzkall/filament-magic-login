@@ -131,6 +131,10 @@ protected function getHeaderActions(): array
 }
 ```
 
+In the table row the action renders as an icon button — hover for its label — while the two
+page-header actions keep their label. Pass any explicit style (`->button()`, `->iconButton()`,
+`->link()`) to override that per placement.
+
 `filament-magic-login:install` offers to do all of that for you. It finds your user resource by
 comparing each resource's `$model` against the model your panel's guard authenticates, and follows
 a resource to an extracted table class through its own imports. If it cannot identify one resource

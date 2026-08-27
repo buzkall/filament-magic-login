@@ -11,7 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - An administrator can now email a specific user a login link from inside a panel, choosing how
   long it lives. `SendMagicLinkAction::make()` serves a table row action and a header action on
-  the View and Edit pages from one class. The expiry is a row of toggle buttons — 15 minutes to
+  the View and Edit pages from one class — an icon button in the row, a labelled button in the
+  page headers. The expiry is a row of toggle buttons — 15 minutes to
   three days by default — with a "custom" choice, clamped to a configurable ceiling. The link is
   only ever emailed to the target user and is never shown to the administrator, so this helps
   somebody log in rather than logging in as them.

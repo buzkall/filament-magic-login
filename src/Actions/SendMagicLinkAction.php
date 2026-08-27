@@ -58,6 +58,11 @@ class SendMagicLinkAction extends Action
         $this->icon('heroicon-o-envelope');
         $this->color('gray');
 
+        // In a table row the action shows as an icon button (see getView()), which has no
+        // label to read, so give it the label as a hover tooltip. Page-header actions keep
+        // their label and need none.
+        $this->tooltip(fn (): ?string => $this->hasTable() ? $this->getLabel() : null);
+
         // Not requiresConfirmation(): that switches to the centred, warning-icon layout
         // meant for a bare yes/no, which reads badly around a field. These give the same
         // "confirm, and choose how long" modal in a shape that fits one.
@@ -67,7 +72,7 @@ class SendMagicLinkAction extends Action
         ]));
         $this->modalIcon('heroicon-o-envelope');
         $this->modalSubmitActionLabel(fn (): string => __('filament-magic-login::filament-magic-login.admin.modal.submit'));
-        $this->modalWidth(Width::Medium);
+        $this->modalWidth(Width::Large);
 
         $this->schema(fn (): array => $this->shouldAskForExpiry() ? $this->getExpirySchema() : []);
 
@@ -80,6 +85,22 @@ class SendMagicLinkAction extends Action
         $this->action(function (array $data): void {
             $this->send($data);
         });
+    }
+
+    /**
+     * A table row shows a compact icon button; a page-header action keeps its label.
+     * One class serves both, so the style is chosen by context here rather than fixed in
+     * setUp() — where the table is not yet bound. An application that picks a style
+     * explicitly (`->button()`, `->iconButton()`, `->link()`) still wins, because that
+     * sets `$this->view`.
+     */
+    public function getView(): string
+    {
+        if (! isset($this->view) && $this->hasTable()) {
+            return static::ICON_BUTTON_VIEW;
+        }
+
+        return parent::getView();
     }
 
     public function panel(string|Closure|null $panelId): static

@@ -11,6 +11,7 @@ use Arzcode\FilamentMagicLogin\Tests\TestCase;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification as FilamentNotification;
+use Filament\Support\Enums\Width;
 use Illuminate\Support\Facades\Notification;
 
 use function Pest\Livewire\livewire;
@@ -39,6 +40,42 @@ beforeEach(function (): void {
 
 it('names itself so an application does not have to', function (): void {
     expect(SendMagicLinkAction::make()->getName())->toBe('sendMagicLink');
+});
+
+it('renders as an icon button in a table row', function (): void {
+    withUserResource();
+
+    $action = livewire(ListUsers::class)->instance()->getTable()->getAction('sendMagicLink');
+
+    expect($action->isIconButton())->toBeTrue()
+        // The icon has no label of its own, so the label carries over as a tooltip.
+        ->and($action->getTooltip())->toBe($action->getLabel());
+});
+
+it('lets an application override the row style', function (): void {
+    withUserResource();
+
+    UsersTable::$configureAction = fn (SendMagicLinkAction $action) => $action->button();
+
+    $action = livewire(ListUsers::class)->instance()->getTable()->getAction('sendMagicLink');
+
+    expect($action->isButton())->toBeTrue()
+        ->and($action->isIconButton())->toBeFalse();
+});
+
+it('keeps its label away from a table — as a page-header button, and standalone', function (): void {
+    // No table bound: the default labelled button, with no redundant tooltip.
+    $action = SendMagicLinkAction::make();
+
+    expect($action->isButton())->toBeTrue()
+        ->and($action->isIconButton())->toBeFalse()
+        ->and($action->getTooltip())->toBeNull()
+        // An explicit choice still wins even with no table.
+        ->and(SendMagicLinkAction::make()->iconButton()->isIconButton())->toBeTrue();
+});
+
+it('opens a wide modal', function (): void {
+    expect(SendMagicLinkAction::make()->getModalWidth())->toBe(Width::Large);
 });
 
 it('sends a link from the table row action', function (): void {
