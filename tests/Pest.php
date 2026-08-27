@@ -1,7 +1,9 @@
 <?php
 
 use Arzcode\FilamentMagicLogin\Actions\SendMagicLink;
+use Arzcode\FilamentMagicLogin\Actions\SendMagicLinkToUser;
 use Arzcode\FilamentMagicLogin\Contracts\TokenRepository;
+use Arzcode\FilamentMagicLogin\Data\MagicLinkDelivery;
 use Arzcode\FilamentMagicLogin\Notifications\MagicLinkNotification;
 use Arzcode\FilamentMagicLogin\Notifications\QueuedMagicLinkNotification;
 use Arzcode\FilamentMagicLogin\Tests\Fixtures\Models\User;
@@ -86,12 +88,11 @@ function hintActionNames(object $component): array
 }
 
 /**
- * Requests a link and returns the URL that was emailed.
+ * The most recent magic-link notification sent to a user, whichever of the shipped,
+ * queued or fixture classes carried it.
  */
-function magicLinkUrl(User $user, string $panelId = 'admin', bool $remember = false): string
+function lastMagicLinkNotification(User $user): ?object
 {
-    requestLink($user->email, $panelId, $remember);
-
     $classes = [
         QueuedMagicLinkNotification::class,
         MagicLinkNotification::class,
@@ -102,11 +103,48 @@ function magicLinkUrl(User $user, string $panelId = 'admin', bool $remember = fa
         $sent = Notification::sent($user, $class);
 
         if ($sent->isNotEmpty()) {
-            return $sent->last()->url;
+            return $sent->last();
         }
     }
 
-    throw new RuntimeException('No magic link notification was sent to '.$user->email.'.');
+    return null;
+}
+
+/**
+ * Requests a link and returns the URL that was emailed.
+ */
+function magicLinkUrl(User $user, string $panelId = 'admin', bool $remember = false): string
+{
+    requestLink($user->email, $panelId, $remember);
+
+    return lastMagicLinkNotification($user)?->url
+        ?? throw new RuntimeException('No magic link notification was sent to '.$user->email.'.');
+}
+
+/**
+ * Sends a link the way an administrator does, from inside a panel.
+ */
+function sendLinkAsAdmin(
+    User $target,
+    ?int $minutes = null,
+    ?User $admin = null,
+    string $panelId = 'admin',
+): MagicLinkDelivery {
+    return app(SendMagicLinkToUser::class)->handle(
+        panel: Filament::getPanel($panelId),
+        user: $target,
+        expiresAfterMinutes: $minutes,
+        issuedBy: $admin ?? makeUser(),
+        request: request(),
+    );
+}
+
+function adminMagicLinkUrl(User $target, ?int $minutes = null, string $panelId = 'admin'): string
+{
+    sendLinkAsAdmin($target, $minutes, panelId: $panelId);
+
+    return lastMagicLinkNotification($target)?->url
+        ?? throw new RuntimeException('No magic link notification was sent to '.$target->email.'.');
 }
 
 /**

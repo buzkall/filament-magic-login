@@ -31,8 +31,49 @@ return [
         'fallback' => 'If the button doesn\'t work, copy this URL into your browser:',
     ],
 
+    'admin' => [
+        'label' => 'Send a login link',
+        'modal' => [
+            'heading' => 'Send a login link',
+            'description' => 'A single-use login link will be emailed to :user. It is never shown here.',
+            'submit' => 'Send the link',
+        ],
+        'field' => [
+            'expiry' => [
+                'label' => 'The link expires in',
+            ],
+            'custom' => [
+                'label' => 'Minutes',
+                'helper' => 'Between 1 and :max minutes.',
+            ],
+        ],
+        'presets' => [
+            'minutes' => ':count minute|:count minutes',
+            'hours' => ':count hour|:count hours',
+            'days' => ':count day|:count days',
+            'custom' => 'Custom',
+        ],
+        'sent' => [
+            'title' => 'Login link sent',
+            'body' => 'A login link has been emailed to :user. It expires in :minutes minutes.',
+        ],
+        'no_email' => [
+            'title' => 'No email address',
+            'body' => ':user has no email address, so there is nowhere to send the link.',
+        ],
+        'cannot_access' => [
+            'title' => 'No access to this panel',
+            'body' => ':user cannot access the [:panel] panel, so a link would not let them in.',
+        ],
+        'rate_limited' => [
+            'title' => 'Too many links sent',
+            'body' => 'Please wait :seconds seconds before sending another.',
+        ],
+    ],
+
     'exceptions' => [
         'custom_login_without_trait' => 'Panel [:panel] uses a custom login page [:class] that does not use :trait. Add the trait or call ->useCustomLoginPage().',
+        'panel_without_plugin' => 'Panel [:panel] does not register the magic login plugin, so it cannot issue login links.',
         'unknown_storage_driver' => 'Unknown filament-magic-login storage driver [:driver]. Use "database" or "cache".',
         'unsafe_cache_store' => 'The [:store] cache store cannot be used for filament-magic-login in production.',
     ],

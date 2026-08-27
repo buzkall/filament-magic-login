@@ -3,11 +3,15 @@
 namespace Arzcode\FilamentMagicLogin\Tests;
 
 use Arzcode\FilamentMagicLogin\FilamentMagicLoginServiceProvider;
+use Arzcode\FilamentMagicLogin\Tests\Fixtures\Filament\Resources\Users\Pages\EditUser;
+use Arzcode\FilamentMagicLogin\Tests\Fixtures\Filament\Resources\Users\Pages\ViewUser;
+use Arzcode\FilamentMagicLogin\Tests\Fixtures\Filament\Resources\Users\Tables\UsersTable;
 use Arzcode\FilamentMagicLogin\Tests\Fixtures\Models\User;
 use Arzcode\FilamentMagicLogin\Tests\Fixtures\MultiFactor\AlwaysOnMultiFactorProvider;
 use Arzcode\FilamentMagicLogin\Tests\Fixtures\Panels\AdminPanelProvider;
 use Arzcode\FilamentMagicLogin\Tests\Fixtures\Panels\AppPanelProvider;
 use Arzcode\FilamentMagicLogin\Tests\Fixtures\Panels\CustomLoginPanelProvider;
+use Arzcode\FilamentMagicLogin\Tests\Fixtures\Panels\PluginlessPanelProvider;
 use BladeUI\Heroicons\BladeHeroiconsServiceProvider;
 use BladeUI\Icons\BladeIconsServiceProvider;
 use Closure;
@@ -43,6 +47,8 @@ abstract class TestCase extends Orchestra
 
     public static bool $registerCustomLoginPanel = false;
 
+    public static bool $registerPluginlessPanel = false;
+
     /**
      * Set through the MAGIC_LOGIN_STORAGE env var so `composer test` can run the
      * whole suite once per driver.
@@ -64,9 +70,13 @@ abstract class TestCase extends Orchestra
         static::$config = [];
         static::$storageDriver = '';
         static::$registerCustomLoginPanel = false;
+        static::$registerPluginlessPanel = false;
         AlwaysOnMultiFactorProvider::$enabled = true;
         AdminPanelProvider::$configurePlugin = null;
         AdminPanelProvider::$configurePanel = null;
+        UsersTable::$configureAction = null;
+        ViewUser::$configureAction = null;
+        EditUser::$configureAction = null;
         AppPanelProvider::$configurePlugin = null;
         CustomLoginPanelProvider::$configurePlugin = null;
         CustomLoginPanelProvider::$pluginBeforeLogin = false;
@@ -100,6 +110,7 @@ abstract class TestCase extends Orchestra
             AdminPanelProvider::class,
             AppPanelProvider::class,
             static::$registerCustomLoginPanel ? CustomLoginPanelProvider::class : null,
+            static::$registerPluginlessPanel ? PluginlessPanelProvider::class : null,
         ]));
     }
 

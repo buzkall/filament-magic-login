@@ -2,29 +2,20 @@
 
 namespace Arzcode\FilamentMagicLogin\Actions;
 
-use Arzcode\FilamentMagicLogin\Contracts\MagicLinkNotification as MagicLinkNotificationContract;
-use Arzcode\FilamentMagicLogin\Contracts\TokenRepository;
 use Arzcode\FilamentMagicLogin\Events\MagicLinkRejected;
-use Arzcode\FilamentMagicLogin\Events\MagicLinkRequested;
 use Arzcode\FilamentMagicLogin\MagicLoginPlugin;
-use Arzcode\FilamentMagicLogin\Notifications\MagicLinkNotification;
-use Arzcode\FilamentMagicLogin\Notifications\QueuedMagicLinkNotification;
-use Arzcode\FilamentMagicLogin\Support\TokenGenerator;
 use Arzcode\FilamentMagicLogin\Support\UserProviderResolver;
-use Carbon\CarbonImmutable;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Notification as NotificationFacade;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 
 final readonly class SendMagicLink
 {
     public function __construct(
-        private TokenGenerator $tokens,
-        private TokenRepository $repository,
+        private IssueMagicLink $issuer,
         private UserProviderResolver $providers,
     ) {}
 
@@ -48,8 +39,7 @@ final readonly class SendMagicLink
 
         RateLimiter::hit($rateLimitKey, $plugin->getRateLimitDecaySeconds());
 
-        $guard = $panel->getAuthGuard();
-        $user = $this->findUser($guard, $email);
+        $user = $this->findUser($panel->getAuthGuard(), $email);
 
         if ($user === null) {
             $this->blurTiming();
@@ -67,58 +57,19 @@ final readonly class SendMagicLink
             return;
         }
 
-        if ($plugin->shouldInvalidatePrevious()) {
-            $this->repository->invalidateFor($user, $panelId);
-        }
-
-        $plaintext = $this->tokens->plaintext();
-        $minutes = $plugin->getExpiresAfterMinutes();
-
-        $token = $this->repository->create(
+        $this->issuer->handle(
+            panel: $panel,
             user: $user,
-            hash: $this->tokens->hash($plaintext),
-            panelId: $panelId,
-            guard: $guard,
             remember: $remember && $plugin->shouldHonorRemember(),
-            expiresAt: CarbonImmutable::now()->addMinutes($minutes),
+            expiresAfterMinutes: $plugin->getExpiresAfterMinutes(),
             ip: $ip,
             userAgent: $request->userAgent(),
         );
-
-        $notificationClass = $this->resolveNotificationClass($plugin);
-
-        NotificationFacade::send($user, new $notificationClass(
-            $this->buildUrl($panel, $plaintext),
-            $minutes,
-            $panelId,
-        ));
-
-        MagicLinkRequested::dispatch($user, $token, $panelId);
     }
 
     private function findUser(string $guard, string $email): ?Authenticatable
     {
         return $this->providers->for($guard)?->retrieveByCredentials(['email' => $email]);
-    }
-
-    private function buildUrl(Panel $panel, string $plaintext): string
-    {
-        return route("filament.{$panel->getId()}.magic-login.consume", ['token' => $plaintext]);
-    }
-
-    /**
-     * @return class-string<MagicLinkNotificationContract>
-     */
-    private function resolveNotificationClass(MagicLoginPlugin $plugin): string
-    {
-        $class = $plugin->getNotificationClass();
-
-        // Queueing a custom notification is the developer's own decision.
-        if ($class === MagicLinkNotification::class && config('filament-magic-login.queue', true)) {
-            return QueuedMagicLinkNotification::class;
-        }
-
-        return $class;
     }
 
     private function rateLimitKey(string $email, ?string $ip): string

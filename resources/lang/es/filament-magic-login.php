@@ -31,8 +31,49 @@ return [
         'fallback' => 'Si el botón no funciona, copia esta URL en tu navegador:',
     ],
 
+    'admin' => [
+        'label' => 'Enviar un enlace de acceso',
+        'modal' => [
+            'heading' => 'Enviar un enlace de acceso',
+            'description' => 'Se enviará por correo a :user un enlace de acceso de un solo uso. Aquí nunca se muestra.',
+            'submit' => 'Enviar el enlace',
+        ],
+        'field' => [
+            'expiry' => [
+                'label' => 'El enlace caduca en',
+            ],
+            'custom' => [
+                'label' => 'Minutos',
+                'helper' => 'Entre 1 y :max minutos.',
+            ],
+        ],
+        'presets' => [
+            'minutes' => ':count minuto|:count minutos',
+            'hours' => ':count hora|:count horas',
+            'days' => ':count día|:count días',
+            'custom' => 'Personalizado',
+        ],
+        'sent' => [
+            'title' => 'Enlace de acceso enviado',
+            'body' => 'Se ha enviado por correo un enlace de acceso a :user. Caduca en :minutes minutos.',
+        ],
+        'no_email' => [
+            'title' => 'Sin dirección de correo',
+            'body' => ':user no tiene dirección de correo, así que no hay dónde enviar el enlace.',
+        ],
+        'cannot_access' => [
+            'title' => 'Sin acceso a este panel',
+            'body' => ':user no puede acceder al panel [:panel], así que un enlace no le dejaría entrar.',
+        ],
+        'rate_limited' => [
+            'title' => 'Demasiados enlaces enviados',
+            'body' => 'Espera :seconds segundos antes de enviar otro.',
+        ],
+    ],
+
     'exceptions' => [
         'custom_login_without_trait' => 'El panel [:panel] usa una página de acceso personalizada [:class] que no utiliza :trait. Añade el trait o llama a ->useCustomLoginPage().',
+        'panel_without_plugin' => 'El panel [:panel] no registra el plugin de magic login, así que no puede emitir enlaces de acceso.',
         'unknown_storage_driver' => 'Driver de almacenamiento desconocido para filament-magic-login [:driver]. Usa "database" o "cache".',
         'unsafe_cache_store' => 'El store de caché [:store] no puede usarse con filament-magic-login en producción.',
     ],

@@ -51,6 +51,19 @@ class MagicLoginPlugin implements Plugin
 
     protected bool|Closure|null $honorRemember = null;
 
+    protected int|Closure|null $adminExpiresAfterMinutes = null;
+
+    /** @var array<int, int>|Closure|null */
+    protected array|Closure|null $expiryPresets = null;
+
+    protected int|Closure|null $maxAdminExpiresAfterMinutes = null;
+
+    protected int|Closure|null $adminRateLimitMaxAttempts = null;
+
+    protected int|Closure|null $adminRateLimitDecaySeconds = null;
+
+    protected string|Closure|null $adminAbility = null;
+
     protected bool|Closure $usesCustomLoginPage = false;
 
     public static function make(): static
@@ -180,6 +193,49 @@ class MagicLoginPlugin implements Plugin
         return $this;
     }
 
+    public function adminExpiresAfter(int|Closure|null $minutes): static
+    {
+        $this->adminExpiresAfterMinutes = $minutes;
+
+        return $this;
+    }
+
+    /**
+     * @param  array<int, int>|Closure  $presets
+     */
+    public function expiryPresets(array|Closure $presets): static
+    {
+        $this->expiryPresets = $presets;
+
+        return $this;
+    }
+
+    public function maxAdminExpiresAfter(int|Closure $minutes): static
+    {
+        $this->maxAdminExpiresAfterMinutes = $minutes;
+
+        return $this;
+    }
+
+    public function adminRateLimit(int|Closure $maxAttempts, int|Closure $decaySeconds): static
+    {
+        $this->adminRateLimitMaxAttempts = $maxAttempts;
+        $this->adminRateLimitDecaySeconds = $decaySeconds;
+
+        return $this;
+    }
+
+    /**
+     * Gate ability checked against the target user. Null defers to the resource's own
+     * authorization, which is what already decides who may administer users at all.
+     */
+    public function adminAbility(string|Closure|null $ability): static
+    {
+        $this->adminAbility = $ability;
+
+        return $this;
+    }
+
     /**
      * Skip login page detection entirely: the panel's own login page is left alone.
      */
@@ -269,6 +325,55 @@ class MagicLoginPlugin implements Plugin
     {
         return (bool) ($this->evaluate($this->honorRemember)
             ?? config('filament-magic-login.honor_remember', true));
+    }
+
+    /**
+     * Three steps rather than the usual two: an application that only sets
+     * `->expiresAfter(30)` gets 30 in the admin modal too, without saying so twice.
+     */
+    public function getAdminExpiresAfterMinutes(): int
+    {
+        return (int) ($this->evaluate($this->adminExpiresAfterMinutes)
+            ?? config('filament-magic-login.admin.expires_after_minutes')
+            ?? $this->getExpiresAfterMinutes());
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    public function getExpiryPresets(): array
+    {
+        /** @var array<int, mixed> $presets */
+        $presets = $this->evaluate($this->expiryPresets)
+            ?? config('filament-magic-login.admin.expiry_presets', [15, 60, 480, 1440, 4320]);
+
+        return array_values(array_map(intval(...), $presets));
+    }
+
+    public function getMaxAdminExpiresAfterMinutes(): int
+    {
+        return (int) ($this->evaluate($this->maxAdminExpiresAfterMinutes)
+            ?? config('filament-magic-login.admin.max_expires_after_minutes', 4320));
+    }
+
+    public function getAdminRateLimitMaxAttempts(): int
+    {
+        return (int) ($this->evaluate($this->adminRateLimitMaxAttempts)
+            ?? config('filament-magic-login.admin.rate_limit.max_attempts', 10));
+    }
+
+    public function getAdminRateLimitDecaySeconds(): int
+    {
+        return (int) ($this->evaluate($this->adminRateLimitDecaySeconds)
+            ?? config('filament-magic-login.admin.rate_limit.decay_seconds', 60));
+    }
+
+    public function getAdminAbility(): ?string
+    {
+        $ability = $this->evaluate($this->adminAbility)
+            ?? config('filament-magic-login.admin.ability');
+
+        return filled($ability) ? (string) $ability : null;
     }
 
     public function usesCustomLoginPage(): bool
