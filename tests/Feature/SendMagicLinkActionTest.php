@@ -95,6 +95,24 @@ it('uses the custom field when the custom preset is chosen', function (): void {
     expect(lastMagicLinkNotification($target)?->expiresAfterMinutes)->toBe(37);
 });
 
+it('renders the presets as toggle buttons, revealing the custom field only when asked', function (): void {
+    withUserResource();
+
+    $component = livewire(ViewUser::class, ['record' => makeUser()->getKey()])
+        ->mountAction('sendMagicLink')
+        ->assertActionMounted('sendMagicLink')
+        // The panel's own lifetime is pre-selected, so submitting straight away is safe.
+        ->assertActionDataSet(['expires_preset' => '15'])
+        ->assertSchemaComponentVisible('expires_preset', 'mountedActionSchema0')
+        ->assertSchemaComponentHidden('expires_after_minutes', 'mountedActionSchema0');
+
+    // Set through Livewire rather than fillForm(), which disables the state-update
+    // hooks the ->live() toggle relies on.
+    $component
+        ->set('mountedActions.0.data.expires_preset', SendMagicLinkAction::CUSTOM)
+        ->assertSchemaComponentVisible('expires_after_minutes', 'mountedActionSchema0');
+});
+
 it('rejects a custom expiry outside the allowed range', function (int $minutes): void {
     withUserResource();
 
