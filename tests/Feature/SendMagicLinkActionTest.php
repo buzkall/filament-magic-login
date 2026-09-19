@@ -384,8 +384,8 @@ it('names the panel in the modal only when it is not the one being looked at', f
     $here = SendMagicLinkAction::make()->anyPanel();
     $here->record(makeUser(['can_access_panels' => ['admin', 'app']]));
 
-    expect($elsewhere->getModalDescription())->toContain($panelNamed('app'))
-        ->and($here->getModalDescription())->not->toContain($panelNamed('admin'));
+    expect($elsewhere->getModalDescription())->toContain($panelNamed('App'))
+        ->and($here->getModalDescription())->not->toContain($panelNamed('Admin'));
 });
 
 it('never lands on a panel that cannot issue links', function (): void {

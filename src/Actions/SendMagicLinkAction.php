@@ -19,6 +19,7 @@ use Filament\Support\Enums\Width;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 use LogicException;
 
 /**
@@ -441,7 +442,7 @@ class SendMagicLinkAction extends Action
         }
 
         return $description.' '.__('filament-magic-login::filament-magic-login.admin.modal.panel', [
-            'panel' => $panel->getId(),
+            'panel' => Str::headline($panel->getId()),
         ]);
     }
 
@@ -604,7 +605,7 @@ class SendMagicLinkAction extends Action
                 ->title(__('filament-magic-login::filament-magic-login.admin.cannot_access.title'))
                 ->body(__('filament-magic-login::filament-magic-login.admin.cannot_access.body', [
                     'user' => $recipient,
-                    'panel' => $this->getTargetPanel()->getId(),
+                    'panel' => Str::headline($this->getTargetPanel()->getId()),
                 ]))
                 ->danger()
                 ->send(),

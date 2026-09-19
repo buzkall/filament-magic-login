@@ -35,7 +35,7 @@ return [
         'modal' => [
             'heading' => 'Send a login link',
             'description' => 'A single-use login link will be emailed to :user. It is never shown here.',
-            'panel' => 'It signs them into the [:panel] panel.',
+            'panel' => 'It signs them into the :panel panel.',
             'submit' => 'Send the link',
         ],
         'field' => [
@@ -63,7 +63,7 @@ return [
         ],
         'cannot_access' => [
             'title' => 'No access to this panel',
-            'body' => ':user cannot access the [:panel] panel, so a link would not let them in.',
+            'body' => ':user cannot access the :panel panel, so a link would not let them in.',
         ],
         'rate_limited' => [
             'title' => 'Too many links sent',

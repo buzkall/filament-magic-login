@@ -35,7 +35,7 @@ return [
         'modal' => [
             'heading' => 'Enviar un enlace de acceso',
             'description' => 'Se enviará por correo a :user un enlace de acceso de un solo uso. Aquí nunca se muestra.',
-            'panel' => 'Le da acceso al panel [:panel].',
+            'panel' => 'Le da acceso al panel :panel.',
             'submit' => 'Enviar el enlace',
         ],
         'field' => [
@@ -63,7 +63,7 @@ return [
         ],
         'cannot_access' => [
             'title' => 'Sin acceso a este panel',
-            'body' => ':user no puede acceder al panel [:panel], así que un enlace no le dejaría entrar.',
+            'body' => ':user no puede acceder al panel :panel, así que un enlace no le dejaría entrar.',
         ],
         'rate_limited' => [
             'title' => 'Demasiados enlaces enviados',

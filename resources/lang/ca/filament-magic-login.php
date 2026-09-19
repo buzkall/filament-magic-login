@@ -35,7 +35,7 @@ return [
         'modal' => [
             'heading' => 'Envia un enllaç d\'accés',
             'description' => 'S\'enviarà per correu a :user un enllaç d\'accés d\'un sol ús. Aquí no es mostra mai.',
-            'panel' => 'Li dóna accés al tauler [:panel].',
+            'panel' => 'Li dóna accés al tauler :panel.',
             'submit' => 'Envia l\'enllaç',
         ],
         'field' => [
@@ -63,7 +63,7 @@ return [
         ],
         'cannot_access' => [
             'title' => 'Sense accés a aquest tauler',
-            'body' => ':user no pot accedir al tauler [:panel], així que un enllaç no el deixaria entrar.',
+            'body' => ':user no pot accedir al tauler :panel, així que un enllaç no el deixaria entrar.',
         ],
         'rate_limited' => [
             'title' => 'S\'han enviat massa enllaços',
