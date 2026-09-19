@@ -35,8 +35,6 @@ class MagicLinkNotification extends Notification implements MagicLinkNotificatio
                 'duration' => ExpiryDuration::describe($this->expiresAfterMinutes),
             ]))
             ->action(__('filament-magic-login::filament-magic-login.mail.button'), $this->url)
-            ->line(__('filament-magic-login::filament-magic-login.mail.ignore'))
-            ->line(__('filament-magic-login::filament-magic-login.mail.fallback'))
-            ->line($this->url);
+            ->line(__('filament-magic-login::filament-magic-login.mail.ignore'));
     }
 }

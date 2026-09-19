@@ -28,7 +28,6 @@ return [
         'intro' => 'Prem el botó de sota per entrar. L\'enllaç caduca d\'aquí a :duration i només es pot fer servir una vegada.',
         'button' => 'Entrar',
         'ignore' => 'Si no has sol·licitat aquest enllaç, pots ignorar aquest correu.',
-        'fallback' => 'Si el botó no funciona, copia aquesta URL al teu navegador:',
     ],
 
     'admin' => [

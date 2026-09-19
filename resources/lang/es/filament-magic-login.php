@@ -28,7 +28,6 @@ return [
         'intro' => 'Pulsa el botón de abajo para entrar. El enlace caduca en :duration y solo se puede usar una vez.',
         'button' => 'Entrar',
         'ignore' => 'Si no has solicitado este enlace, puedes ignorar este correo.',
-        'fallback' => 'Si el botón no funciona, copia esta URL en tu navegador:',
     ],
 
     'admin' => [

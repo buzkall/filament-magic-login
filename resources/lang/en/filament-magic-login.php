@@ -28,7 +28,6 @@ return [
         'intro' => 'Click the button below to sign in. The link expires in :duration and can only be used once.',
         'button' => 'Sign in',
         'ignore' => 'If you didn\'t request this, you can safely ignore this email.',
-        'fallback' => 'If the button doesn\'t work, copy this URL into your browser:',
     ],
 
     'admin' => [
