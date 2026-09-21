@@ -74,6 +74,7 @@ return [
     'exceptions' => [
         'custom_login_without_trait' => 'El tauler [:panel] fa servir una pàgina d\'accés personalitzada [:class] que no utilitza :trait. Afegeix el trait o crida ->useCustomLoginPage().',
         'panel_without_plugin' => 'El tauler [:panel] no registra el plugin de magic login, així que no pot emetre enllaços d\'accés.',
+        'panel_with_other_guard' => 'El tauler [:panel] inicia sessió amb el guard [:guard], no amb [:expected], així que no s\'hi pot enviar un enllaç d\'accés des del tauler [:from].',
         'unknown_storage_driver' => 'Driver d\'emmagatzematge desconegut per a filament-magic-login [:driver]. Fes servir "database" o "cache".',
         'unsafe_cache_store' => 'L\'store de memòria cau [:store] no es pot fer servir amb filament-magic-login en producció.',
     ],

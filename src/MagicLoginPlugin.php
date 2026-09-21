@@ -76,6 +76,9 @@ class MagicLoginPlugin implements Plugin
 
     protected bool|Closure $usesCustomLoginPage = false;
 
+    /** @var array<int, string>|bool|Closure */
+    protected array|bool|Closure $reachablePanels = false;
+
     /**
      * Answers from the icon set, which cannot change within a request.
      *
@@ -284,6 +287,20 @@ class MagicLoginPlugin implements Plugin
         return $this;
     }
 
+    /**
+     * What the login page does for a user this panel will not admit: send them a link
+     * for a panel they can reach instead of nothing at all. `true` tries every panel
+     * that registers the plugin; a list tries those, most preferred first.
+     *
+     * @param  array<int, string>|bool|Closure  $panels
+     */
+    public function sendToReachablePanel(array|bool|Closure $panels = true): static
+    {
+        $this->reachablePanels = $panels;
+
+        return $this;
+    }
+
     public function getExpiresAfterMinutes(): int
     {
         return (int) ($this->evaluate($this->expiresAfterMinutes)
@@ -439,6 +456,60 @@ class MagicLoginPlugin implements Plugin
     public function usesCustomLoginPage(): bool
     {
         return (bool) $this->evaluate($this->usesCustomLoginPage);
+    }
+
+    /**
+     * The panels a login-page request may fall back to, most preferred first, never
+     * including the one asked at.
+     *
+     * Only a panel on the same guard is any use: the user was looked up through this
+     * panel's guard, and the consume route refuses a token minted for another. An
+     * inferred list skips the panels that fail that or lack the plugin; a named one
+     * throws, because a misconfiguration here would otherwise be another silent drop.
+     *
+     * @return array<int, Panel>
+     */
+    public function getReachablePanels(Panel $from): array
+    {
+        /** @var array<int, mixed>|bool|null $panels */
+        $panels = $this->evaluate($this->reachablePanels);
+
+        if ($panels === true) {
+            return array_values(array_filter(
+                Filament::getPanels(),
+                fn (Panel $panel): bool => $panel->getId() !== $from->getId()
+                    && $panel->hasPlugin(static::ID)
+                    && $panel->getAuthGuard() === $from->getAuthGuard(),
+            ));
+        }
+
+        if (! is_array($panels)) {
+            return [];
+        }
+
+        $named = array_map(fn (mixed $id): Panel => Filament::getPanel((string) $id), $panels);
+
+        foreach ($named as $panel) {
+            if (! $panel->hasPlugin(static::ID)) {
+                throw new LogicException(__('filament-magic-login::filament-magic-login.exceptions.panel_without_plugin', [
+                    'panel' => $panel->getId(),
+                ]));
+            }
+
+            if ($panel->getAuthGuard() !== $from->getAuthGuard()) {
+                throw new LogicException(__('filament-magic-login::filament-magic-login.exceptions.panel_with_other_guard', [
+                    'panel' => $panel->getId(),
+                    'guard' => $panel->getAuthGuard(),
+                    'expected' => $from->getAuthGuard(),
+                    'from' => $from->getId(),
+                ]));
+            }
+        }
+
+        return array_values(array_filter(
+            $named,
+            fn (Panel $panel): bool => $panel->getId() !== $from->getId(),
+        ));
     }
 
     /**

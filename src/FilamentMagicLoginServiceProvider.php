@@ -5,6 +5,8 @@ namespace Arzcode\FilamentMagicLogin;
 use Arzcode\FilamentMagicLogin\Commands\InstallCommand;
 use Arzcode\FilamentMagicLogin\Commands\UninstallCommand;
 use Arzcode\FilamentMagicLogin\Contracts\TokenRepository;
+use Arzcode\FilamentMagicLogin\Events\MagicLinkRejected;
+use Arzcode\FilamentMagicLogin\Listeners\LogMagicLinkRejection;
 use Arzcode\FilamentMagicLogin\Repositories\CacheTokenRepository;
 use Arzcode\FilamentMagicLogin\Repositories\DatabaseTokenRepository;
 use Arzcode\FilamentMagicLogin\Support\TokenGenerator;
@@ -14,6 +16,7 @@ use Illuminate\Cache\FileStore;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Cache\Repository as CacheRepository;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use LogicException;
 use Spatie\LaravelPackageTools\Package;
@@ -62,6 +65,8 @@ class FilamentMagicLoginServiceProvider extends PackageServiceProvider
     public function packageBooted(): void
     {
         $this->registerRateLimiters();
+
+        Event::listen(MagicLinkRejected::class, LogMagicLinkRejection::class);
     }
 
     /**

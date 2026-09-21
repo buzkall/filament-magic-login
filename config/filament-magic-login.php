@@ -86,4 +86,15 @@ return [
     // Pad the response of unknown-email requests to blur timing differences.
     'blur_timing' => true,
 
+    // Log every refused request or redemption with its reason, since the login page
+    // stays silent about them. The entry includes the address that was typed in.
+    'log_rejections' => [
+        'enabled' => true,
+
+        // Null uses the default channel.
+        'channel' => null,
+
+        'level' => 'info',
+    ],
+
 ];

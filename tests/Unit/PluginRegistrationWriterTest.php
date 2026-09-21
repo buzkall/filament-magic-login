@@ -162,26 +162,38 @@ it('appends alongside a plugin the panel already registers', function (): void {
         ->and($result)->toContain("            ->login()\n            ->plugin(MagicLoginPlugin::make());");
 });
 
-it('steps over a plugins array the panel already has', function (): void {
+it('joins a plugins array the panel already has', function (): void {
     $code = providerSource(<<<'PHP'
             return $panel
                 ->id('admin')
                 ->plugins([
                     FilamentShieldPlugin::make(),
                     ThemesPlugin::make(),
-                ]);
+                ])
+                ->login();
     PHP);
 
     $result = $this->writer->add($code);
 
     expect($result)->not->toBeNull()
         ->and($this->writer->isParsable($result))->toBeTrue()
-        ->and($result)->toContain("                ThemesPlugin::make(),\n            ])\n            ->plugin(MagicLoginPlugin::make());");
+        ->and($result)->toContain("                ThemesPlugin::make(),\n                MagicLoginPlugin::make(),\n            ])\n            ->login();")
+        ->and($result)->not->toContain('->plugin(MagicLoginPlugin::make())');
+});
+
+it('joins a plugins array written on one line', function (): void {
+    $code = providerSource("        return \$panel->id('admin')->plugins([FilamentShieldPlugin::make()]);");
+
+    $result = $this->writer->add($code);
+
+    expect($result)->not->toBeNull()
+        ->and($this->writer->isParsable($result))->toBeTrue()
+        ->and($result)->toContain('->plugins([FilamentShieldPlugin::make(), MagicLoginPlugin::make()]);');
 });
 
 it('is not fooled by a plugin configured inside a plugins array', function (): void {
-    // The array is last in the chain, so the deepest `->` in the file is the one
-    // inside it — and it is no guide to where the panel's own calls are indented.
+    // The deepest `->` in the chain is inside the array, and no guide to where the
+    // array's own elements are indented.
     $code = providerSource(<<<'PHP'
             return $panel
                 ->id('admin')
@@ -195,7 +207,36 @@ it('is not fooled by a plugin configured inside a plugins array', function (): v
 
     expect($result)->not->toBeNull()
         ->and($this->writer->isParsable($result))->toBeTrue()
-        ->and($result)->toContain("            ])\n            ->plugin(MagicLoginPlugin::make());");
+        ->and($result)->toContain("                    ->gridColumns(['default' => 1]),\n                MagicLoginPlugin::make(),\n            ]);");
+});
+
+it('appends the call when the plugins are passed as a variable', function (): void {
+    $code = providerSource(<<<'PHP'
+            return $panel
+                ->id('admin')
+                ->plugins($this->plugins());
+    PHP);
+
+    $result = $this->writer->add($code);
+
+    expect($result)->not->toBeNull()
+        ->and($this->writer->isParsable($result))->toBeTrue()
+        ->and($result)->toContain("            ->plugins(\$this->plugins())\n            ->plugin(MagicLoginPlugin::make());");
+});
+
+it('appends the call when the chain has more than one plugins array', function (): void {
+    // No way to tell which array the plugin belongs in, so it goes beside both.
+    $code = providerSource(<<<'PHP'
+            return $panel
+                ->plugins([FilamentShieldPlugin::make()])
+                ->plugins([ThemesPlugin::make()]);
+    PHP);
+
+    $result = $this->writer->add($code);
+
+    expect($result)->not->toBeNull()
+        ->and($this->writer->isParsable($result))->toBeTrue()
+        ->and($result)->toContain("            ->plugins([ThemesPlugin::make()])\n            ->plugin(MagicLoginPlugin::make());");
 });
 
 it('does not mistake another plugin for ours', function (): void {

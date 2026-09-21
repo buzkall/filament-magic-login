@@ -74,6 +74,7 @@ return [
     'exceptions' => [
         'custom_login_without_trait' => 'El panel [:panel] usa una página de acceso personalizada [:class] que no utiliza :trait. Añade el trait o llama a ->useCustomLoginPage().',
         'panel_without_plugin' => 'El panel [:panel] no registra el plugin de magic login, así que no puede emitir enlaces de acceso.',
+        'panel_with_other_guard' => 'El panel [:panel] inicia sesión con el guard [:guard], no con [:expected], así que no se puede enviar allí un enlace de acceso desde el panel [:from].',
         'unknown_storage_driver' => 'Driver de almacenamiento desconocido para filament-magic-login [:driver]. Usa "database" o "cache".',
         'unsafe_cache_store' => 'El store de caché [:store] no puede usarse con filament-magic-login en producción.',
     ],

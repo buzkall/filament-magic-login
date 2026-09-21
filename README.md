@@ -111,6 +111,28 @@ certainty — a provider that returns its panel from more than one place, for in
 and left for you. If your panel uses a **custom** login page, see
 [Using your own login page](#using-your-own-login-page).
 
+### Users who belong to another panel
+
+By default a link is only sent when the user can reach the panel whose login page they are on.
+Anyone else gets the same "check your inbox" confirmation and no email, because the page never
+says whether an address exists. With two panels, that means a client who asks on the admin login
+page gets nothing.
+
+`sendToReachablePanel()` sends them a link for a panel they *can* reach instead:
+
+```php
+MagicLoginPlugin::make()->sendToReachablePanel()                 // any panel with the plugin
+MagicLoginPlugin::make()->sendToReachablePanel(['app', 'staff']) // these, most preferred first
+```
+
+The panel they asked at is still tried first, so a user who can reach it stays there. Each fallback
+is checked with `canAccessPanel()` in its own right, and the link uses that panel's own lifetime,
+route and "remember me" setting. The confirmation on the page stays exactly the same.
+
+Only panels on the same auth guard qualify, since the user was looked up through that guard. The
+`true` form skips any panel that fails that or lacks the plugin. A named list throws a
+`LogicException` instead, so a typo shows up as an error rather than as missing emails.
+
 ## Sending a link to a user
 
 An administrator can email a specific user a login link from inside a panel, choosing how long it
@@ -313,6 +335,7 @@ on the plugin. Panel-level setters win; anything you do not set falls back to co
 | `invalidatePrevious(bool\|Closure)` | `invalidate_previous` | `true` | Drop the user's other unused tokens for this panel when a new link is issued. |
 | `honorRemember(bool\|Closure)` | `honor_remember` | `true` | Carry the "remember me" checkbox into the magic-link session. |
 | `useCustomLoginPage(bool\|Closure)` | — | `false` | Skip login page detection entirely. |
+| `sendToReachablePanel(array\|bool\|Closure)` | — | `false` | Send a user who cannot reach this panel a link for one they can. See [Users who belong to another panel](#users-who-belong-to-another-panel). |
 | `adminExpiresAfter(int\|Closure\|null)` | `admin.expires_after_minutes` | falls back to `expires_after_minutes` | Expiry pre-selected in the admin modal. |
 | `expiryPresets(array\|Closure)` | `admin.expiry_presets` | `[15, 60, 480, 1440, 4320]` | Toggle buttons offered there, in minutes. |
 | `maxAdminExpiresAfter(int\|Closure)` | `admin.max_expires_after_minutes` | `4320` (3 days) | Ceiling for an admin-chosen expiry. |
@@ -322,6 +345,7 @@ on the plugin. Panel-level setters win; anything you do not set falls back to co
 | — | `queue` | `true` | Send the shipped notification on the queue. |
 | — | `storage.driver` | `database` | `database` or `cache`. Global only, not per panel. |
 | — | `blur_timing` | `true` | Pad unknown-address responses so timing does not leak account existence. |
+| — | `log_rejections.*` | `true` / default channel / `info` | Log every refusal with its reason. See [Events](#events). |
 
 A fuller example:
 
@@ -414,6 +438,13 @@ consumption.
 `MagicLinkRejected` reasons: `rate_limited`, `unknown_user`, `cannot_access_panel`, `invalid`,
 `expired`, `used`. The first three are raised on the request side (where the UI deliberately
 stays silent), the rest on the consume side.
+
+The package logs every rejection itself, at `info` on the default channel, as
+`filament-magic-login: link rejected [unknown_user]` with the reason, email, panel and IP as
+context. That is where to look when someone says the email never arrived. The entry holds the
+address as it was typed. Set `log_rejections.enabled` to `false` to turn it off, or change
+`log_rejections.channel` and `log_rejections.level`. For something richer, such as a security
+channel or an audit table, write your own listener:
 
 ```php
 Event::listen(MagicLinkRejected::class, function (MagicLinkRejected $event): void {

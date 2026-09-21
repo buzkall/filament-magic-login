@@ -5,6 +5,18 @@ All notable changes to `filament-magic-login` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### 1.4.4 - 2026-09-21
+
+- `MagicLoginPlugin::sendToReachablePanel()`: when a user asks for a link on the login page of a
+  panel they cannot reach, send them one for a panel they can (any panel with the plugin, or a
+  named list in order) instead of nothing. Off by default. Only panels on the same auth guard
+  qualify, and a named panel without the plugin or on another guard throws.
+- Every `MagicLinkRejected` is now logged with its reason, email, panel and IP, so a link that was
+  never sent can be traced. It is on by default at `info` on the default channel. Configure it
+  with `log_rejections.enabled`, `log_rejections.channel` and `log_rejections.level`.
+
 ## 1.4.3 - 2026-09-19
 
 ### Changed

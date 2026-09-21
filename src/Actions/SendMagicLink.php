@@ -49,7 +49,9 @@ final readonly class SendMagicLink
             return;
         }
 
-        if (($user instanceof FilamentUser) && (! $user->canAccessPanel($panel))) {
+        $target = $this->reachablePanel($panel, $user);
+
+        if ($target === null) {
             $this->blurTiming();
 
             MagicLinkRejected::dispatch('cannot_access_panel', $email, $panelId, $ip);
@@ -57,14 +59,35 @@ final readonly class SendMagicLink
             return;
         }
 
+        // Every setting comes from the panel the link opens, as with an admin-issued one.
+        $targetPlugin = MagicLoginPlugin::for($target);
+
         $this->issuer->handle(
-            panel: $panel,
+            panel: $target,
             user: $user,
-            remember: $remember && $plugin->shouldHonorRemember(),
-            expiresAfterMinutes: $plugin->getExpiresAfterMinutes(),
+            remember: $remember && $targetPlugin->shouldHonorRemember(),
+            expiresAfterMinutes: $targetPlugin->getExpiresAfterMinutes(),
             ip: $ip,
             userAgent: $request->userAgent(),
         );
+    }
+
+    /**
+     * The panel asked at when it admits the user, else the first fallback that does.
+     * Each candidate is asked `canAccessPanel()` in its own right, so a fallback can
+     * never open a panel the user could not already sign in to.
+     */
+    private function reachablePanel(Panel $panel, Authenticatable $user): ?Panel
+    {
+        $candidates = [$panel, ...MagicLoginPlugin::for($panel)->getReachablePanels($panel)];
+
+        foreach ($candidates as $candidate) {
+            if ((! $user instanceof FilamentUser) || $user->canAccessPanel($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return null;
     }
 
     private function findUser(string $guard, string $email): ?Authenticatable
