@@ -6,7 +6,13 @@ use Illuminate\Support\Facades\Event;
 beforeEach(function (): void {
     $this->logged = collect();
 
-    Event::listen(MessageLogged::class, fn (MessageLogged $message) => $this->logged->push($message));
+    // Only our own lines: with the lowest dependencies on newer PHP, vendor code logs
+    // deprecation warnings of its own.
+    Event::listen(MessageLogged::class, function (MessageLogged $message): void {
+        if (str_starts_with($message->message, 'filament-magic-login:')) {
+            $this->logged->push($message);
+        }
+    });
 });
 
 it('logs a request the login page stayed silent about', function (): void {

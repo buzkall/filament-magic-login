@@ -12,10 +12,15 @@ class MagicLinkNotification extends Notification implements MagicLinkNotificatio
 {
     use Queueable;
 
+    /**
+     * Not readonly: before PHP 8.4 a readonly property can only be initialised from
+     * the class declaring it, so unserializing QueuedMagicLinkNotification off the
+     * queue would fail.
+     */
     public function __construct(
-        public readonly string $url,
-        public readonly int $expiresAfterMinutes,
-        public readonly string $panelId,
+        public string $url,
+        public int $expiresAfterMinutes,
+        public string $panelId,
     ) {}
 
     /**
