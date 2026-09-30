@@ -28,12 +28,6 @@ class ConsumeMagicLinkController
         // signed them in. The token is left untouched: a link must never silently swap
         // an authenticated session for another account's.
         if ($panel->auth()->check()) {
-            Notification::make()
-                ->title(__('filament-magic-login::filament-magic-login.messages.already_signed_in_title'))
-                ->body(__('filament-magic-login::filament-magic-login.messages.already_signed_in_body'))
-                ->info()
-                ->send();
-
             // getUrl() is null for a tenant panel whose user has no tenant yet; the panel
             // root then lets Filament decide, e.g. by showing tenant registration.
             return redirect()->to(

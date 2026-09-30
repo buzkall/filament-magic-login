@@ -311,11 +311,10 @@ that list is inferred rather than named. `canAccessPanel()` is called for each c
 once per row per action, so keep it cheap (or eager-load whatever it reads) on a large table.
 
 A note on the link itself: anyone already signed in to the panel who opens a link is sent to the
-panel home with an "already signed in" message, and the token is **not** consumed. That covers a
-user opening the same email a second time, and an administrator clicking the link they just sent.
-It is intentional — a link should not silently swap an authenticated session — but it does mean
-"open it yourself to check" is not a test. Open it in a private window, or send it to a user who is
-signed out.
+panel home, and the token is **not** consumed. That covers a user opening the same email a second
+time, and an administrator clicking the link they just sent. It is intentional — a link should not
+silently swap an authenticated session — but it does mean "open it yourself to check" is not a
+test. Open it in a private window, or send it to a user who is signed out.
 
 ## Configuration
 

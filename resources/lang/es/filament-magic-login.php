@@ -20,8 +20,6 @@ return [
             'used' => 'El enlace ya se ha utilizado. Solicita uno nuevo.',
             'cannot_access_panel' => 'No tienes acceso a este panel.',
         ],
-        'already_signed_in_title' => 'Ya has iniciado sesión',
-        'already_signed_in_body' => 'No se ha usado este enlace de acceso. Para usarlo con otra cuenta, cierra la sesión primero o ábrelo en una ventana privada.',
     ],
 
     'mail' => [
