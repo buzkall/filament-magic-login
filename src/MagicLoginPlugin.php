@@ -118,10 +118,9 @@ class MagicLoginPlugin implements Plugin
     {
         $panel->routes(function (Panel $panel): void {
             Route::get($this->getRoutePath().'/{token}', ConsumeMagicLinkController::class)
-                ->middleware([
-                    'guest:'.$panel->getAuthGuard(),
-                    'throttle:filament-magic-login-consume',
-                ])
+                // No `guest:` middleware: it sends a signed-in visitor to the application's
+                // home rather than the panel, with no word why. The controller handles them.
+                ->middleware(['throttle:filament-magic-login-consume'])
                 ->name('magic-login.consume');
         });
 

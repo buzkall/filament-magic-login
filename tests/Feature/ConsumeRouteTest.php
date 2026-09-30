@@ -5,6 +5,7 @@ use Arzcode\FilamentMagicLogin\Events\MagicLinkConsumed;
 use Arzcode\FilamentMagicLogin\Events\MagicLinkRejected;
 use Arzcode\FilamentMagicLogin\Support\TokenGenerator;
 use Filament\Facades\Filament;
+use Filament\Notifications\Notification as FilamentNotification;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Notification;
@@ -157,9 +158,26 @@ it('does not consume the token for an already authenticated visitor', function (
 
     $this->actingAs($user, 'web');
 
-    $this->get($url)->assertRedirect();
+    $this->get($url)->assertRedirect(Filament::getPanel('admin')->getUrl());
 
     expect(app(TokenRepository::class)->unusedFor($user, 'admin'))->toHaveCount(1);
+});
+
+it('tells a visitor who opens the link a second time that they are already signed in', function (): void {
+    $user = makeUser();
+    $url = magicLinkUrl($user);
+
+    $this->get($url);
+    $this->assertAuthenticatedAs($user, 'web');
+
+    $this->get($url)->assertRedirect(Filament::getPanel('admin')->getUrl());
+
+    FilamentNotification::assertNotified(
+        FilamentNotification::make()
+            ->title(__('filament-magic-login::filament-magic-login.messages.already_signed_in_title'))
+            ->body(__('filament-magic-login::filament-magic-login.messages.already_signed_in_body'))
+            ->info(),
+    );
 });
 
 // 20

@@ -24,6 +24,23 @@ class ConsumeMagicLinkController
         $panel = Panels::current();
         $plugin = MagicLoginPlugin::for($panel);
 
+        // Typically someone opening the same email a second time after the first click
+        // signed them in. The token is left untouched: a link must never silently swap
+        // an authenticated session for another account's.
+        if ($panel->auth()->check()) {
+            Notification::make()
+                ->title(__('filament-magic-login::filament-magic-login.messages.already_signed_in_title'))
+                ->body(__('filament-magic-login::filament-magic-login.messages.already_signed_in_body'))
+                ->info()
+                ->send();
+
+            // getUrl() is null for a tenant panel whose user has no tenant yet; the panel
+            // root then lets Filament decide, e.g. by showing tenant registration.
+            return redirect()->to(
+                $plugin->getRedirectUrl($panel->auth()->user()) ?? $panel->getUrl() ?? url($panel->getPath()),
+            );
+        }
+
         try {
             $user = app(ConsumeMagicLink::class)->handle($panel, $token, $request);
         } catch (InvalidMagicLinkException $exception) {

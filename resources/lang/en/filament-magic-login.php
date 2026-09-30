@@ -20,6 +20,8 @@ return [
             'used' => 'The link has already been used. Request a new one.',
             'cannot_access_panel' => 'You don\'t have access to this panel.',
         ],
+        'already_signed_in_title' => 'You\'re already signed in',
+        'already_signed_in_body' => 'This login link was not used. To use it for another account, sign out first or open it in a private window.',
     ],
 
     'mail' => [

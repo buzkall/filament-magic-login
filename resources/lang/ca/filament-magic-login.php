@@ -20,6 +20,8 @@ return [
             'used' => 'L\'enllaç ja s\'ha fet servir. Sol·licita\'n un de nou.',
             'cannot_access_panel' => 'No tens accés a aquest tauler.',
         ],
+        'already_signed_in_title' => 'Ja has iniciat la sessió',
+        'already_signed_in_body' => 'No s\'ha fet servir aquest enllaç d\'accés. Per fer-lo servir amb un altre compte, tanca la sessió primer o obre\'l en una finestra privada.',
     ],
 
     'mail' => [
