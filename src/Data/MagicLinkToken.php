@@ -2,6 +2,7 @@
 
 namespace Arzcode\FilamentMagicLogin\Data;
 
+use Arzcode\FilamentMagicLogin\Support\Cast;
 use Arzcode\FilamentMagicLogin\Support\UserProviderResolver;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Auth\Authenticatable;
@@ -75,20 +76,20 @@ final readonly class MagicLinkToken
     }
 
     /**
-     * @param  array<string, mixed>  $data
+     * @param  array<mixed>  $data
      */
     public static function fromArray(array $data): self
     {
         return new self(
-            id: (string) $data['id'],
-            authenticatableType: (string) $data['authenticatable_type'],
-            authenticatableId: $data['authenticatable_id'],
-            hash: (string) $data['hash'],
-            panelId: (string) $data['panel_id'],
-            guard: (string) $data['guard'],
+            id: Cast::string($data['id']),
+            authenticatableType: Cast::string($data['authenticatable_type']),
+            authenticatableId: Cast::identifier($data['authenticatable_id']),
+            hash: Cast::string($data['hash']),
+            panelId: Cast::string($data['panel_id']),
+            guard: Cast::string($data['guard']),
             remember: (bool) $data['remember'],
-            expiresAt: CarbonImmutable::parse($data['expires_at']),
-            usedAt: filled($data['used_at'] ?? null) ? CarbonImmutable::parse($data['used_at']) : null,
+            expiresAt: CarbonImmutable::parse(Cast::string($data['expires_at'])),
+            usedAt: filled($data['used_at'] ?? null) ? CarbonImmutable::parse(Cast::string($data['used_at'])) : null,
         );
     }
 

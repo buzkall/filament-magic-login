@@ -3,6 +3,7 @@
 namespace Arzcode\FilamentMagicLogin\Models;
 
 use Arzcode\FilamentMagicLogin\Data\MagicLinkToken;
+use Arzcode\FilamentMagicLogin\Support\Cast;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -29,7 +30,7 @@ class MagicLoginToken extends Model
     /**
      * Keeps a day of used and expired rows for audit before they are pruned.
      */
-    public const AUDIT_RETENTION_HOURS = 24;
+    public const int AUDIT_RETENTION_HOURS = 24;
 
     /**
      * @var array<string>
@@ -38,7 +39,7 @@ class MagicLoginToken extends Model
 
     public function getTable(): string
     {
-        return $this->table ?? config('filament-magic-login.storage.table', 'magic_login_tokens');
+        return $this->table ?? Cast::string(config('filament-magic-login.storage.table', 'magic_login_tokens'));
     }
 
     /**
@@ -108,7 +109,7 @@ class MagicLoginToken extends Model
     public function toData(): MagicLinkToken
     {
         return new MagicLinkToken(
-            id: (string) $this->getKey(),
+            id: Cast::string($this->getKey()),
             authenticatableType: $this->authenticatable_type,
             authenticatableId: $this->authenticatable_id,
             hash: $this->token_hash,

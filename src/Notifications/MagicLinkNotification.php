@@ -3,6 +3,7 @@
 namespace Arzcode\FilamentMagicLogin\Notifications;
 
 use Arzcode\FilamentMagicLogin\Contracts\MagicLinkNotification as MagicLinkNotificationContract;
+use Arzcode\FilamentMagicLogin\Support\Cast;
 use Arzcode\FilamentMagicLogin\Support\ExpiryDuration;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -34,7 +35,7 @@ class MagicLinkNotification extends Notification implements MagicLinkNotificatio
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject(__('filament-magic-login::filament-magic-login.mail.subject', ['app' => config('app.name')]))
+            ->subject(__('filament-magic-login::filament-magic-login.mail.subject', ['app' => Cast::string(config('app.name') ?? '')]))
             ->greeting(__('filament-magic-login::filament-magic-login.mail.greeting'))
             ->line(__('filament-magic-login::filament-magic-login.mail.intro', [
                 'duration' => ExpiryDuration::describe($this->expiresAfterMinutes),

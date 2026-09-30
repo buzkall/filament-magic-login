@@ -155,3 +155,28 @@ it('refuses a named fallback panel that does not register the plugin', function 
 
     expect(fn () => requestLink($client->email, 'admin'))->toThrow(LogicException::class);
 });
+
+it('refuses a named fallback panel that signs in through another guard', function (): void {
+    app()->setLocale('en');
+
+    $this->rebootWith(configurePlugin: fn (MagicLoginPlugin $plugin) => $plugin->sendToReachablePanel(['app']));
+
+    // A link minted for the admin panel's guard would sign nobody in on a panel that
+    // authenticates somewhere else, so this is a configuration mistake, not a fallback.
+    Filament::getPanel('app')->authGuard('api');
+
+    $admin = Filament::getPanel('admin');
+
+    expect(fn () => MagicLoginPlugin::for($admin)->getReachablePanels($admin))
+        ->toThrow(LogicException::class, 'Panel [app] signs in through the [api] guard, not [web], so a login link cannot be sent there from panel [admin].');
+});
+
+it('leaves a panel with another guard out when inferring the fallbacks', function (): void {
+    $this->rebootWith(configurePlugin: fn (MagicLoginPlugin $plugin) => $plugin->sendToReachablePanel());
+
+    Filament::getPanel('app')->authGuard('api');
+
+    $admin = Filament::getPanel('admin');
+
+    expect(MagicLoginPlugin::for($admin)->getReachablePanels($admin))->toBe([]);
+});

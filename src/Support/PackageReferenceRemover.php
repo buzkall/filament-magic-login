@@ -15,23 +15,23 @@ use ParseError;
  */
 final class PackageReferenceRemover
 {
-    public const NAMESPACE = 'Arzcode\\FilamentMagicLogin';
+    public const string NAMESPACE = 'Arzcode\\FilamentMagicLogin';
 
     /**
      * The two classes an application registers by hand, and the only references this
      * class knows how to rewrite.
      */
-    private const PLUGIN_CLASS = 'MagicLoginPlugin';
+    private const string PLUGIN_CLASS = 'MagicLoginPlugin';
 
-    private const TRAIT_CLASS = 'HasMagicLinkAction';
+    private const string TRAIT_CLASS = 'HasMagicLinkAction';
 
-    private const ACTION_CLASS = 'SendMagicLinkAction';
+    private const string ACTION_CLASS = 'SendMagicLinkAction';
 
     /**
      * Not registered by hand, but written into `routes/console.php` by the installer's
      * pruning step, and the only other name of ours an application's own files carry.
      */
-    private const MODEL_CLASS = 'MagicLoginToken';
+    private const string MODEL_CLASS = 'MagicLoginToken';
 
     public function remove(string $code): CleanedSource
     {

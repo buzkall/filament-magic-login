@@ -3,6 +3,7 @@
 namespace Arzcode\FilamentMagicLogin\Listeners;
 
 use Arzcode\FilamentMagicLogin\Events\MagicLinkRejected;
+use Arzcode\FilamentMagicLogin\Support\Cast;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -23,7 +24,7 @@ final class LogMagicLinkRejection
         $channel = config('filament-magic-login.log_rejections.channel');
 
         Log::channel(is_string($channel) ? $channel : null)->log(
-            (string) config('filament-magic-login.log_rejections.level', 'info'),
+            Cast::string(config('filament-magic-login.log_rejections.level', 'info')),
             'filament-magic-login: link rejected ['.$event->reason.']',
             [
                 'reason' => $event->reason,

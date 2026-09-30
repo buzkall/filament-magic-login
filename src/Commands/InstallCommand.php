@@ -65,7 +65,7 @@ class InstallCommand extends Command
 
         outro(__('filament-magic-login::filament-magic-login.install.done'));
 
-        return static::SUCCESS;
+        return self::SUCCESS;
     }
 
     protected function usesCacheDriver(): bool
@@ -333,7 +333,7 @@ class InstallCommand extends Command
     }
 
     /**
-     * @param  array<int, array{0: string, 1: string}>  $targets  Path and the method to append with.
+     * @param  array<int, array{0: string, 1: 'addRecordAction'|'addHeaderAction'}>  $targets  Path and the method to append with.
      * @param  array<string, string>  $files
      * @return bool Whether any file was actually edited.
      */
@@ -388,7 +388,7 @@ class InstallCommand extends Command
      * written inline, or the extracted table class it hands off to.
      *
      * @param  array<string, string>  $files
-     * @return array{0: string, 1: string}|null
+     * @return array{0: string, 1: 'addRecordAction'|'addHeaderAction'}|null
      */
     protected function tableFile(string $resource, array $files): ?array
     {
@@ -411,7 +411,7 @@ class InstallCommand extends Command
 
     /**
      * @param  array<string, string>  $files
-     * @return array<int, array{0: string, 1: string}>
+     * @return array<int, array{0: string, 1: 'addRecordAction'|'addHeaderAction'}>
      */
     protected function recordPages(string $resourceClass, array $files): array
     {
@@ -437,7 +437,11 @@ class InstallCommand extends Command
             }
         }
 
-        $guards[] = config('auth.defaults.guard');
+        $default = config('auth.defaults.guard');
+
+        if (is_string($default)) {
+            $guards[] = $default;
+        }
 
         foreach (array_filter($guards) as $guard) {
             $provider = config("auth.guards.{$guard}.provider");
@@ -499,9 +503,10 @@ class InstallCommand extends Command
      */
     protected function publishedMigrations(): array
     {
-        return $this->filesystem->glob(
-            database_path('migrations/*_create_magic_login_tokens_table.php'),
-        );
+        return array_values(array_filter(
+            $this->filesystem->glob(database_path('migrations/*_create_magic_login_tokens_table.php')),
+            is_string(...),
+        ));
     }
 
     protected function relative(string $path): string

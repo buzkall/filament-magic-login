@@ -4,6 +4,7 @@ namespace Arzcode\FilamentMagicLogin\Repositories;
 
 use Arzcode\FilamentMagicLogin\Contracts\TokenRepository;
 use Arzcode\FilamentMagicLogin\Data\MagicLinkToken;
+use Arzcode\FilamentMagicLogin\Support\Cast;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Cache\LockProvider;
@@ -17,15 +18,15 @@ use Illuminate\Support\Facades\Cache;
  */
 class CacheTokenRepository implements TokenRepository
 {
-    public const PREFIX = 'filament-magic-login';
+    public const string PREFIX = 'filament-magic-login';
 
-    public const LOCK_SECONDS = 5;
+    public const int LOCK_SECONDS = 5;
 
     /**
      * Entries outlive the link itself so that "expired" and "already used" stay
      * distinguishable from "never existed", exactly as the database driver does.
      */
-    public const RETENTION_SECONDS = 86400;
+    public const int RETENTION_SECONDS = 86400;
 
     public function create(
         Authenticatable $user,
@@ -42,7 +43,7 @@ class CacheTokenRepository implements TokenRepository
         $token = new MagicLinkToken(
             id: $key,
             authenticatableType: $this->typeOf($user),
-            authenticatableId: $user->getAuthIdentifier(),
+            authenticatableId: Cast::identifier($user->getAuthIdentifier()),
             hash: $hash,
             panelId: $panelId,
             guard: $guard,
@@ -99,7 +100,7 @@ class CacheTokenRepository implements TokenRepository
 
     public function invalidateFor(Authenticatable $user, string $panelId): void
     {
-        $indexKey = $this->indexKey($panelId, $this->typeOf($user), $user->getAuthIdentifier());
+        $indexKey = $this->indexKey($panelId, $this->typeOf($user), Cast::identifier($user->getAuthIdentifier()));
 
         foreach ($this->readIndex($indexKey) as $hash) {
             $this->store()->forget($this->key($panelId, $hash));
@@ -110,7 +111,7 @@ class CacheTokenRepository implements TokenRepository
 
     public function unusedFor(Authenticatable $user, string $panelId): array
     {
-        $indexKey = $this->indexKey($panelId, $this->typeOf($user), $user->getAuthIdentifier());
+        $indexKey = $this->indexKey($panelId, $this->typeOf($user), Cast::identifier($user->getAuthIdentifier()));
 
         $tokens = [];
 
@@ -127,7 +128,9 @@ class CacheTokenRepository implements TokenRepository
 
     public function store(): Repository
     {
-        return Cache::store(config('filament-magic-login.storage.cache_store'));
+        $store = config('filament-magic-login.storage.cache_store');
+
+        return Cache::store(is_string($store) ? $store : null);
     }
 
     protected function key(string $panelId, string $hash): string
@@ -135,7 +138,7 @@ class CacheTokenRepository implements TokenRepository
         return static::PREFIX.":{$panelId}:{$hash}";
     }
 
-    protected function indexKey(string $panelId, string $type, mixed $id): string
+    protected function indexKey(string $panelId, string $type, int|string $id): string
     {
         return static::PREFIX.':index:'.$panelId.':'.sha1($type.'|'.$id);
     }

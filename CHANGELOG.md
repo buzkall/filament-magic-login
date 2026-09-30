@@ -5,9 +5,31 @@ All notable changes to `filament-magic-login` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## 1.5.0 - 2026-09-30
 
-### 1.4.4 - 2026-09-21
+### Changed
+
+- A panel id that does not exist, given to `SendMagicLinkAction::panel()` / `panels()` or to
+  `MagicLoginPlugin::sendToReachablePanel()`, now throws a `LogicException` naming it ("There is
+  no panel with the id [x]") instead of failing later on a null panel.
+- Settings read from config or from a closure are checked instead of cast blindly. A value that
+  cannot sensibly be a number or a string (`'ten'` for a rate limit, an array for a log level) now
+  throws an `UnexpectedValueException` rather than quietly turning into `0` or `""`. Numeric
+  strings such as `'10'` are still accepted.
+- An icon that is not a string, a `BackedEnum` or an `Htmlable` now renders no icon, instead of
+  being handed on to Filament as it is.
+- The class constants are typed (`MagicLoginPlugin::ID` is a `string`,
+  `CacheTokenRepository::RETENTION_SECONDS` an `int`, and so on). A subclass that redefines one has
+  to keep its type.
+- The package now passes PHPStan at level 10.
+
+### Removed
+
+- `MagicLoginPlugin::get()`, which nothing used. Use `MagicLoginPlugin::for($panel)`.
+
+## 1.4.4 - 2026-09-21
+
+### Added
 
 - `MagicLoginPlugin::sendToReachablePanel()`: when a user asks for a link on the login page of a
   panel they cannot reach, send them one for a panel they can (any panel with the plugin, or a

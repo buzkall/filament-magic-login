@@ -13,7 +13,7 @@ use Carbon\CarbonInterval;
  */
 final class ExpiryDuration
 {
-    public const CASCADES_ABOVE_MINUTES = 60;
+    public const int CASCADES_ABOVE_MINUTES = 60;
 
     public static function describe(int $minutes): string
     {

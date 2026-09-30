@@ -6,7 +6,7 @@ use Illuminate\Support\Str;
 
 final readonly class TokenGenerator
 {
-    public const PLAINTEXT_LENGTH = 64;
+    public const int PLAINTEXT_LENGTH = 64;
 
     /**
      * A high-entropy, single-use secret. Never persisted.

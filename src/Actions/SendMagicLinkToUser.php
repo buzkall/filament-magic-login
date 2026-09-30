@@ -5,6 +5,7 @@ namespace Arzcode\FilamentMagicLogin\Actions;
 use Arzcode\FilamentMagicLogin\Data\MagicLinkDelivery;
 use Arzcode\FilamentMagicLogin\Enums\MagicLinkDeliveryOutcome;
 use Arzcode\FilamentMagicLogin\MagicLoginPlugin;
+use Arzcode\FilamentMagicLogin\Support\Cast;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Contracts\Auth\Authenticatable;
@@ -121,7 +122,7 @@ final readonly class SendMagicLinkToUser
     {
         $issuer = $issuedBy === null
             ? 'anonymous'
-            : $issuedBy::class.'|'.$issuedBy->getAuthIdentifier();
+            : $issuedBy::class.'|'.Cast::identifier($issuedBy->getAuthIdentifier());
 
         return 'filament-magic-login:admin:'.sha1($panelId.'|'.$issuer.'|'.$ip);
     }

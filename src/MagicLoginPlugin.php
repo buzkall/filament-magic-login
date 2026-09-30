@@ -7,6 +7,8 @@ use Arzcode\FilamentMagicLogin\Contracts\MagicLinkNotification as MagicLinkNotif
 use Arzcode\FilamentMagicLogin\Enums\MagicLinkPosition;
 use Arzcode\FilamentMagicLogin\Http\Controllers\ConsumeMagicLinkController;
 use Arzcode\FilamentMagicLogin\Pages\Login;
+use Arzcode\FilamentMagicLogin\Support\Cast;
+use Arzcode\FilamentMagicLogin\Support\Panels;
 use BackedEnum;
 use BladeUI\Icons\Factory as IconFactory;
 use Closure;
@@ -23,14 +25,15 @@ use Livewire\Finder\Finder;
 use Livewire\Livewire;
 use LogicException;
 use Throwable;
+use UnexpectedValueException;
 
 class MagicLoginPlugin implements Plugin
 {
     use EvaluatesClosures;
 
-    public const ID = 'magic-login';
+    public const string ID = 'magic-login';
 
-    public const DEFAULT_ICON = 'heroicon-o-envelope';
+    public const string DEFAULT_ICON = 'heroicon-o-envelope';
 
     protected int|Closure|null $expiresAfterMinutes = null;
 
@@ -88,18 +91,14 @@ class MagicLoginPlugin implements Plugin
 
     public static function make(): static
     {
-        return app(static::class);
-    }
+        $plugin = app(static::class);
 
-    /**
-     * The plugin registered on the current panel.
-     */
-    public static function get(): static
-    {
-        /** @var static $plugin */
-        $plugin = Filament::getCurrentOrDefaultPanel()->getPlugin(static::ID);
-
-        return $plugin;
+        return $plugin instanceof static
+            ? $plugin
+            : throw new UnexpectedValueException(__('filament-magic-login::filament-magic-login.exceptions.unexpected_type', [
+                'expected' => static::class,
+                'type' => get_debug_type($plugin),
+            ]));
     }
 
     public static function for(Panel $panel): static
@@ -303,7 +302,7 @@ class MagicLoginPlugin implements Plugin
 
     public function getExpiresAfterMinutes(): int
     {
-        return (int) ($this->evaluate($this->expiresAfterMinutes)
+        return Cast::int($this->evaluate($this->expiresAfterMinutes)
             ?? config('filament-magic-login.expires_after_minutes', 15));
     }
 
@@ -317,7 +316,7 @@ class MagicLoginPlugin implements Plugin
 
     public function getLabel(): string
     {
-        return (string) ($this->evaluate($this->label)
+        return Cast::string($this->evaluate($this->label)
             ?? __('filament-magic-login::filament-magic-login.actions.magic_link'));
     }
 
@@ -357,25 +356,25 @@ class MagicLoginPlugin implements Plugin
 
     public function getRateLimitMaxAttempts(): int
     {
-        return (int) ($this->evaluate($this->rateLimitMaxAttempts)
+        return Cast::int($this->evaluate($this->rateLimitMaxAttempts)
             ?? config('filament-magic-login.rate_limit.max_attempts', 3));
     }
 
     public function getRateLimitDecaySeconds(): int
     {
-        return (int) ($this->evaluate($this->rateLimitDecaySeconds)
+        return Cast::int($this->evaluate($this->rateLimitDecaySeconds)
             ?? config('filament-magic-login.rate_limit.decay_seconds', 300));
     }
 
     public function getConsumeRateLimitMaxAttempts(): int
     {
-        return (int) ($this->evaluate($this->consumeRateLimitMaxAttempts)
+        return Cast::int($this->evaluate($this->consumeRateLimitMaxAttempts)
             ?? config('filament-magic-login.consume_rate_limit.max_attempts', 10));
     }
 
     public function getConsumeRateLimitDecaySeconds(): int
     {
-        return (int) ($this->evaluate($this->consumeRateLimitDecaySeconds)
+        return Cast::int($this->evaluate($this->consumeRateLimitDecaySeconds)
             ?? config('filament-magic-login.consume_rate_limit.decay_seconds', 60));
     }
 
@@ -383,12 +382,12 @@ class MagicLoginPlugin implements Plugin
     {
         $url = $this->evaluate($this->redirectTo, namedInjections: ['user' => $user]);
 
-        return filled($url) ? (string) $url : null;
+        return filled($url) ? Cast::string($url) : null;
     }
 
     public function getRoutePath(): string
     {
-        return trim((string) ($this->evaluate($this->routePath)
+        return trim(Cast::string($this->evaluate($this->routePath)
             ?? config('filament-magic-login.route_path', 'magic-login')), '/');
     }
 
@@ -410,7 +409,7 @@ class MagicLoginPlugin implements Plugin
      */
     public function getAdminExpiresAfterMinutes(): int
     {
-        return (int) ($this->evaluate($this->adminExpiresAfterMinutes)
+        return Cast::int($this->evaluate($this->adminExpiresAfterMinutes)
             ?? config('filament-magic-login.admin.expires_after_minutes')
             ?? $this->getExpiresAfterMinutes());
     }
@@ -424,24 +423,24 @@ class MagicLoginPlugin implements Plugin
         $presets = $this->evaluate($this->expiryPresets)
             ?? config('filament-magic-login.admin.expiry_presets', [15, 60, 480, 1440, 4320]);
 
-        return array_values(array_map(intval(...), $presets));
+        return array_values(array_map(Cast::int(...), $presets));
     }
 
     public function getMaxAdminExpiresAfterMinutes(): int
     {
-        return (int) ($this->evaluate($this->maxAdminExpiresAfterMinutes)
+        return Cast::int($this->evaluate($this->maxAdminExpiresAfterMinutes)
             ?? config('filament-magic-login.admin.max_expires_after_minutes', 4320));
     }
 
     public function getAdminRateLimitMaxAttempts(): int
     {
-        return (int) ($this->evaluate($this->adminRateLimitMaxAttempts)
+        return Cast::int($this->evaluate($this->adminRateLimitMaxAttempts)
             ?? config('filament-magic-login.admin.rate_limit.max_attempts', 10));
     }
 
     public function getAdminRateLimitDecaySeconds(): int
     {
-        return (int) ($this->evaluate($this->adminRateLimitDecaySeconds)
+        return Cast::int($this->evaluate($this->adminRateLimitDecaySeconds)
             ?? config('filament-magic-login.admin.rate_limit.decay_seconds', 60));
     }
 
@@ -450,7 +449,7 @@ class MagicLoginPlugin implements Plugin
         $ability = $this->evaluate($this->adminAbility)
             ?? config('filament-magic-login.admin.ability');
 
-        return filled($ability) ? (string) $ability : null;
+        return filled($ability) ? Cast::string($ability) : null;
     }
 
     public function usesCustomLoginPage(): bool
@@ -487,7 +486,7 @@ class MagicLoginPlugin implements Plugin
             return [];
         }
 
-        $named = array_map(fn (mixed $id): Panel => Filament::getPanel((string) $id), $panels);
+        $named = array_map(fn (mixed $id): Panel => Panels::find(Cast::string($id)), $panels);
 
         foreach ($named as $panel) {
             if (! $panel->hasPlugin(static::ID)) {
@@ -527,8 +526,12 @@ class MagicLoginPlugin implements Plugin
 
         // An enum names a case the compiler checked, and anything else Filament renders
         // (an Htmlable, an image path) is not a name in an icon set to begin with.
-        if (! is_string($icon)) {
+        if ($icon instanceof BackedEnum || $icon instanceof Htmlable) {
             return $icon;
+        }
+
+        if (! is_string($icon)) {
+            return null;
         }
 
         if ($this->iconExists($icon)) {

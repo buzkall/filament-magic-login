@@ -6,13 +6,13 @@ use Exception;
 
 class InvalidMagicLinkException extends Exception
 {
-    public const REASON_INVALID = 'invalid';
+    public const string REASON_INVALID = 'invalid';
 
-    public const REASON_EXPIRED = 'expired';
+    public const string REASON_EXPIRED = 'expired';
 
-    public const REASON_USED = 'used';
+    public const string REASON_USED = 'used';
 
-    public const REASON_CANNOT_ACCESS_PANEL = 'cannot_access_panel';
+    public const string REASON_CANNOT_ACCESS_PANEL = 'cannot_access_panel';
 
     final public function __construct(public readonly string $reason)
     {

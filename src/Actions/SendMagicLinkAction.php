@@ -4,7 +4,9 @@ namespace Arzcode\FilamentMagicLogin\Actions;
 
 use Arzcode\FilamentMagicLogin\Enums\MagicLinkDeliveryOutcome;
 use Arzcode\FilamentMagicLogin\MagicLoginPlugin;
+use Arzcode\FilamentMagicLogin\Support\Cast;
 use Arzcode\FilamentMagicLogin\Support\ExpiryDuration;
+use Arzcode\FilamentMagicLogin\Support\Panels;
 use BackedEnum;
 use Closure;
 use Filament\Actions\Action;
@@ -53,7 +55,7 @@ class SendMagicLinkAction extends Action
 
     protected string|Closure|null $ability = null;
 
-    public const CUSTOM = 'custom';
+    public const string CUSTOM = 'custom';
 
     public static function getDefaultName(): ?string
     {
@@ -71,7 +73,7 @@ class SendMagicLinkAction extends Action
         // In a table row the action shows as an icon button (see getView()), which has no
         // label to read, so give it the label as a hover tooltip. Page-header actions keep
         // their label and need none.
-        $this->tooltip(fn (SendMagicLinkAction $action): ?string => $action->isInTable() ? $action->getLabel() : null);
+        $this->tooltip(fn (SendMagicLinkAction $action): string|Htmlable|null => $action->isInTable() ? $action->getLabel() : null);
 
         // Not requiresConfirmation(): that switches to the centred, warning-icon layout
         // meant for a bare yes/no, which reads badly around a field. These give the same
@@ -110,7 +112,7 @@ class SendMagicLinkAction extends Action
     public function getView(): string
     {
         if (! isset($this->view) && $this->isInTable()) {
-            return static::ICON_BUTTON_VIEW;
+            return self::ICON_BUTTON_VIEW;
         }
 
         return parent::getView();
@@ -241,7 +243,7 @@ class SendMagicLinkAction extends Action
         $id = $this->evaluate($this->panelId);
 
         if (filled($id)) {
-            return [Filament::getPanel((string) $id)];
+            return [Panels::find(Cast::string($id))];
         }
 
         /** @var array<int, mixed>|null $ids */
@@ -249,7 +251,7 @@ class SendMagicLinkAction extends Action
 
         if (filled($ids)) {
             return array_values(array_map(
-                fn (mixed $id): Panel => Filament::getPanel((string) $id),
+                fn (mixed $id): Panel => Panels::find(Cast::string($id)),
                 $ids,
             ));
         }
@@ -258,7 +260,7 @@ class SendMagicLinkAction extends Action
             return $this->getPanelsWithThePlugin();
         }
 
-        return [Filament::getCurrentOrDefaultPanel()];
+        return [Panels::current()];
     }
 
     /**
@@ -281,7 +283,7 @@ class SendMagicLinkAction extends Action
             }
         }
 
-        return $candidates[0] ?? Filament::getCurrentOrDefaultPanel();
+        return $candidates[0] ?? Panels::current();
     }
 
     /**
@@ -292,7 +294,7 @@ class SendMagicLinkAction extends Action
      */
     protected function getPanelsWithThePlugin(): array
     {
-        $current = Filament::getCurrentOrDefaultPanel();
+        $current = Panels::current();
 
         $panels = array_filter(
             Filament::getPanels(),
@@ -313,13 +315,13 @@ class SendMagicLinkAction extends Action
 
     public function getDefaultExpiresAfterMinutes(): int
     {
-        return (int) ($this->evaluate($this->expiresAfterMinutes)
+        return Cast::int($this->evaluate($this->expiresAfterMinutes)
             ?? $this->getPlugin()->getAdminExpiresAfterMinutes());
     }
 
     public function getMaximumExpiresAfterMinutes(): int
     {
-        return (int) ($this->evaluate($this->maxExpiresAfterMinutes)
+        return Cast::int($this->evaluate($this->maxExpiresAfterMinutes)
             ?? $this->getPlugin()->getMaxAdminExpiresAfterMinutes());
     }
 
@@ -337,7 +339,7 @@ class SendMagicLinkAction extends Action
 
         $presets = $configured === null
             ? $this->getPlugin()->getExpiryPresets()
-            : array_map(intval(...), $configured);
+            : array_map(Cast::int(...), $configured);
 
         $presets[] = $this->getDefaultExpiresAfterMinutes();
 
@@ -437,7 +439,7 @@ class SendMagicLinkAction extends Action
 
         $panel = $this->getTargetPanel();
 
-        if ($panel->getId() === Filament::getCurrentOrDefaultPanel()->getId()) {
+        if ($panel->getId() === Panels::current()->getId()) {
             return $description;
         }
 
@@ -451,7 +453,7 @@ class SendMagicLinkAction extends Action
         $record = $this->getRecord();
 
         if (is_object($record) && filled($record->email ?? null)) {
-            return (string) $record->email;
+            return Cast::string($record->email);
         }
 
         return (string) ($this->getRecordTitle() ?? '');
@@ -461,7 +463,7 @@ class SendMagicLinkAction extends Action
     {
         $ability = $this->evaluate($this->ability) ?? $this->getPlugin()->getAdminAbility();
 
-        return filled($ability) ? (string) $ability : null;
+        return filled($ability) ? Cast::string($ability) : null;
     }
 
     /**
@@ -545,7 +547,7 @@ class SendMagicLinkAction extends Action
     }
 
     /**
-     * @param  array<string, mixed>  $data
+     * @param  array<mixed>  $data
      */
     protected function requestedMinutes(array $data): ?int
     {
@@ -556,14 +558,14 @@ class SendMagicLinkAction extends Action
         $preset = $data['expires_preset'] ?? null;
 
         if ($preset === static::CUSTOM) {
-            return (int) ($data['expires_after_minutes'] ?? $this->getDefaultExpiresAfterMinutes());
+            return Cast::int($data['expires_after_minutes'] ?? $this->getDefaultExpiresAfterMinutes());
         }
 
-        return filled($preset) ? (int) $preset : null;
+        return filled($preset) ? Cast::int($preset) : null;
     }
 
     /**
-     * @param  array<string, mixed>  $data
+     * @param  array<mixed>  $data
      */
     protected function send(array $data): void
     {

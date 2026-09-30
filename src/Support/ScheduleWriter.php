@@ -11,9 +11,9 @@ namespace Arzcode\FilamentMagicLogin\Support;
  */
 final class ScheduleWriter extends SourceWriter
 {
-    public const SCHEDULE_CLASS = 'Illuminate\\Support\\Facades\\Schedule';
+    public const string SCHEDULE_CLASS = 'Illuminate\\Support\\Facades\\Schedule';
 
-    public const MODEL_CLASS = 'Arzcode\\FilamentMagicLogin\\Models\\MagicLoginToken';
+    public const string MODEL_CLASS = 'Arzcode\\FilamentMagicLogin\\Models\\MagicLoginToken';
 
     /**
      * The pruner is already scheduled if any line asks `model:prune` for our model,

@@ -9,6 +9,7 @@ use Arzcode\FilamentMagicLogin\Events\MagicLinkRejected;
 use Arzcode\FilamentMagicLogin\Listeners\LogMagicLinkRejection;
 use Arzcode\FilamentMagicLogin\Repositories\CacheTokenRepository;
 use Arzcode\FilamentMagicLogin\Repositories\DatabaseTokenRepository;
+use Arzcode\FilamentMagicLogin\Support\Cast;
 use Arzcode\FilamentMagicLogin\Support\TokenGenerator;
 use Arzcode\FilamentMagicLogin\Support\UserProviderResolver;
 use Illuminate\Cache\ArrayStore;
@@ -24,9 +25,9 @@ use Spatie\LaravelPackageTools\PackageServiceProvider;
 
 class FilamentMagicLoginServiceProvider extends PackageServiceProvider
 {
-    public const DRIVER_DATABASE = 'database';
+    public const string DRIVER_DATABASE = 'database';
 
-    public const DRIVER_CACHE = 'cache';
+    public const string DRIVER_CACHE = 'cache';
 
     public function configurePackage(Package $package): void
     {
@@ -83,10 +84,10 @@ class FilamentMagicLoginServiceProvider extends PackageServiceProvider
                 : null;
 
             $maxAttempts = $plugin?->getConsumeRateLimitMaxAttempts()
-                ?? config('filament-magic-login.consume_rate_limit.max_attempts', 10);
+                ?? Cast::int(config('filament-magic-login.consume_rate_limit.max_attempts', 10));
 
             $decaySeconds = $plugin?->getConsumeRateLimitDecaySeconds()
-                ?? config('filament-magic-login.consume_rate_limit.decay_seconds', 60);
+                ?? Cast::int(config('filament-magic-login.consume_rate_limit.decay_seconds', 60));
 
             return Limit::perSecond($maxAttempts, $decaySeconds)->by((string) $request->ip());
         });
@@ -102,7 +103,7 @@ class FilamentMagicLoginServiceProvider extends PackageServiceProvider
 
         if ($store instanceof CacheRepository && $this->isUnsafeStore($store)) {
             throw new LogicException(__('filament-magic-login::filament-magic-login.exceptions.unsafe_cache_store', [
-                'store' => config('filament-magic-login.storage.cache_store') ?? config('cache.default'),
+                'store' => Cast::string(config('filament-magic-login.storage.cache_store') ?? config('cache.default')),
             ]));
         }
 

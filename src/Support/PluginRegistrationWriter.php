@@ -13,7 +13,7 @@ namespace Arzcode\FilamentMagicLogin\Support;
  */
 final class PluginRegistrationWriter extends SourceWriter
 {
-    public const PLUGIN_CLASS = 'Arzcode\\FilamentMagicLogin\\MagicLoginPlugin';
+    public const string PLUGIN_CLASS = 'Arzcode\\FilamentMagicLogin\\MagicLoginPlugin';
 
     /**
      * The plugin is registered if the file mentions it at all, whichever way it was
@@ -194,7 +194,7 @@ final class PluginRegistrationWriter extends SourceWriter
             $open = $this->nextMeaningful($tokens, $name + 1);
             $bracket = $open === null ? null : $this->nextMeaningful($tokens, $open + 1);
 
-            if ($bracket === null || $tokens[$open]['text'] !== '(' || $tokens[$bracket]['text'] !== '[') {
+            if ($open === null || $bracket === null || $tokens[$open]['text'] !== '(' || $tokens[$bracket]['text'] !== '[') {
                 return null;
             }
 

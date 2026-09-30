@@ -12,11 +12,11 @@ namespace Arzcode\FilamentMagicLogin\Support;
  */
 final class UserResourceWriter extends SourceWriter
 {
-    public const ACTION_CLASS = 'Arzcode\\FilamentMagicLogin\\Actions\\SendMagicLinkAction';
+    public const string ACTION_CLASS = 'Arzcode\\FilamentMagicLogin\\Actions\\SendMagicLinkAction';
 
-    private const RECORD_ACTIONS = 'recordActions';
+    private const string RECORD_ACTIONS = 'recordActions';
 
-    private const HEADER_ACTIONS = 'getHeaderActions';
+    private const string HEADER_ACTIONS = 'getHeaderActions';
 
     /**
      * Wired if the file mentions the action at all, whichever way it was written.

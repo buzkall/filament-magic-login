@@ -3,6 +3,7 @@
 namespace Arzcode\FilamentMagicLogin\Commands;
 
 use Arzcode\FilamentMagicLogin\MagicLoginPlugin;
+use Arzcode\FilamentMagicLogin\Support\Cast;
 use Arzcode\FilamentMagicLogin\Support\PackageReferenceRemover;
 use Filament\Facades\Filament;
 use Filament\Panel;
@@ -39,7 +40,7 @@ class UninstallCommand extends Command
         if (! $this->confirmToProceed()) {
             $this->comment(__('filament-magic-login::filament-magic-login.uninstall.aborted'));
 
-            return static::SUCCESS;
+            return self::SUCCESS;
         }
 
         $this->cleanSourceFiles();
@@ -50,7 +51,7 @@ class UninstallCommand extends Command
         $this->info(__('filament-magic-login::filament-magic-login.uninstall.next_steps'));
         $this->info(__('filament-magic-login::filament-magic-login.uninstall.done'));
 
-        return static::SUCCESS;
+        return self::SUCCESS;
     }
 
     protected function confirmToProceed(): bool
@@ -154,7 +155,7 @@ class UninstallCommand extends Command
 
     protected function dropTokensTable(): void
     {
-        $table = (string) config('filament-magic-login.storage.table', 'magic_login_tokens');
+        $table = Cast::string(config('filament-magic-login.storage.table', 'magic_login_tokens'));
 
         if (config('filament-magic-login.storage.driver') === 'cache') {
             $this->comment(__('filament-magic-login::filament-magic-login.uninstall.cache_note'));
@@ -231,9 +232,10 @@ class UninstallCommand extends Command
      */
     protected function publishedMigrations(): array
     {
-        return $this->filesystem->glob(
-            database_path('migrations/*_create_magic_login_tokens_table.php'),
-        );
+        return array_values(array_filter(
+            $this->filesystem->glob(database_path('migrations/*_create_magic_login_tokens_table.php')),
+            is_string(...),
+        ));
     }
 
     protected function deletePath(string $path): void

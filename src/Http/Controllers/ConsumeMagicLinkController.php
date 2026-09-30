@@ -5,7 +5,7 @@ namespace Arzcode\FilamentMagicLogin\Http\Controllers;
 use Arzcode\FilamentMagicLogin\Actions\ConsumeMagicLink;
 use Arzcode\FilamentMagicLogin\Exceptions\InvalidMagicLinkException;
 use Arzcode\FilamentMagicLogin\MagicLoginPlugin;
-use Filament\Facades\Filament;
+use Arzcode\FilamentMagicLogin\Support\Panels;
 use Filament\Notifications\Notification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -21,7 +21,7 @@ class ConsumeMagicLinkController
             return response()->noContent();
         }
 
-        $panel = Filament::getCurrentOrDefaultPanel();
+        $panel = Panels::current();
         $plugin = MagicLoginPlugin::for($panel);
 
         try {
@@ -33,7 +33,7 @@ class ConsumeMagicLinkController
                 ->danger()
                 ->send();
 
-            return redirect()->to($panel->getLoginUrl());
+            return redirect()->to($panel->getLoginUrl() ?? '/');
         }
 
         return redirect()->intended($plugin->getRedirectUrl($user) ?? $panel->getUrl());

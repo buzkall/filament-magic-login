@@ -6,9 +6,9 @@ use Arzcode\FilamentMagicLogin\Actions\SendMagicLink;
 use Arzcode\FilamentMagicLogin\Enums\MagicLinkPosition;
 use Arzcode\FilamentMagicLogin\MagicLoginPlugin;
 use Arzcode\FilamentMagicLogin\Support\ExpiryDuration;
+use Arzcode\FilamentMagicLogin\Support\Panels;
 use BackedEnum;
 use Filament\Actions\Action;
-use Filament\Facades\Filament;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Actions;
@@ -74,7 +74,7 @@ trait HasMagicLinkAction
             return;
         }
 
-        $panel = Filament::getCurrentOrDefaultPanel();
+        $panel = Panels::current();
 
         app(SendMagicLink::class)->handle(
             panel: $panel,
@@ -98,13 +98,14 @@ trait HasMagicLinkAction
      */
     protected function getMagicLinkEmail(): ?string
     {
-        $email = trim((string) ($this->getMagicLinkFormState()['email'] ?? ''));
+        $email = $this->getMagicLinkFormState()['email'] ?? null;
+        $email = is_string($email) ? trim($email) : '';
 
         return $email === '' ? null : $email;
     }
 
     /**
-     * @return array<string, mixed>
+     * @return array<mixed>
      */
     protected function getMagicLinkFormState(): array
     {
@@ -115,7 +116,7 @@ trait HasMagicLinkAction
 
     protected function getMagicLoginPlugin(): MagicLoginPlugin
     {
-        return MagicLoginPlugin::for(Filament::getCurrentOrDefaultPanel());
+        return MagicLoginPlugin::for(Panels::current());
     }
 
     /**
