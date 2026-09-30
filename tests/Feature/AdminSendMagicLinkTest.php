@@ -4,8 +4,11 @@ use Arzcode\FilamentMagicLogin\Actions\SendMagicLinkToUser;
 use Arzcode\FilamentMagicLogin\Contracts\TokenRepository;
 use Arzcode\FilamentMagicLogin\Enums\MagicLinkDeliveryOutcome;
 use Arzcode\FilamentMagicLogin\Events\MagicLinkRequested;
+use Arzcode\FilamentMagicLogin\Notifications\MagicLinkNotification;
+use Arzcode\FilamentMagicLogin\Notifications\QueuedMagicLinkNotification;
 use Filament\Facades\Filament;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Notification;
 
 beforeEach(function (): void {
@@ -217,6 +220,31 @@ it('mints a link that actually signs the recipient in', function (): void {
     $this->assertAuthenticatedAs($user, 'web');
 
     expect(app(TokenRepository::class)->unusedFor($user, 'admin'))->toBeEmpty();
+});
+
+it('sends right away even when the login page queues', function (): void {
+    $this->rebootWith(['filament-magic-login.queue' => true]);
+    Notification::fake();
+
+    $user = makeUser();
+
+    sendLinkAsAdmin($user);
+
+    Notification::assertSentTo($user, MagicLinkNotification::class);
+    Notification::assertNotSentTo($user, QueuedMagicLinkNotification::class);
+});
+
+it('reports a send that fails instead of claiming it was sent', function (): void {
+    Exceptions::fake();
+    Notification::shouldReceive('send')->andThrow(new RuntimeException('Connection to mail server refused'));
+
+    $result = sendLinkAsAdmin(makeUser());
+
+    expect($result->outcome)->toBe(MagicLinkDeliveryOutcome::Failed)
+        ->and($result->isSuccessful())->toBeFalse()
+        ->and($result->token)->toBeNull();
+
+    Exceptions::assertReported(RuntimeException::class);
 });
 
 it('is resolvable from the container', function (): void {

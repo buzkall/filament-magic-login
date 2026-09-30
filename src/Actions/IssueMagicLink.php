@@ -9,6 +9,7 @@ use Arzcode\FilamentMagicLogin\Events\MagicLinkRequested;
 use Arzcode\FilamentMagicLogin\MagicLoginPlugin;
 use Arzcode\FilamentMagicLogin\Notifications\MagicLinkNotification;
 use Arzcode\FilamentMagicLogin\Notifications\QueuedMagicLinkNotification;
+use Arzcode\FilamentMagicLogin\Support\Cast;
 use Arzcode\FilamentMagicLogin\Support\TokenGenerator;
 use Carbon\CarbonImmutable;
 use Filament\Panel;
@@ -24,7 +25,8 @@ use Illuminate\Support\Facades\Notification as NotificationFacade;
  * apart between them.
  *
  * Every decision this class does *not* make — whether the address exists, whether the
- * user may reach the panel, how long the link should live — belongs to the caller,
+ * user may reach the panel, how long the link should live, whether the shipped
+ * notification is queued — belongs to the caller,
  * because the two callers answer them very differently.
  */
 final readonly class IssueMagicLink
@@ -42,6 +44,7 @@ final readonly class IssueMagicLink
         ?string $ip = null,
         ?string $userAgent = null,
         ?Authenticatable $issuedBy = null,
+        bool $queue = true,
     ): MagicLinkToken {
         $plugin = MagicLoginPlugin::for($panel);
         $panelId = $panel->getId();
@@ -63,13 +66,19 @@ final readonly class IssueMagicLink
             userAgent: $userAgent,
         );
 
-        $notificationClass = $this->resolveNotificationClass($plugin);
+        $notificationClass = $this->resolveNotificationClass($plugin, $queue);
 
-        NotificationFacade::send($user, new $notificationClass(
+        $notification = new $notificationClass(
             $this->buildUrl($panel, $plaintext),
             $expiresAfterMinutes,
             $panelId,
-        ));
+        );
+
+        if ($notification instanceof QueuedMagicLinkNotification) {
+            $notification->onConnection($this->queueConnection());
+        }
+
+        NotificationFacade::send($user, $notification);
 
         MagicLinkRequested::dispatch($user, $token, $panelId, $issuedBy);
 
@@ -82,14 +91,29 @@ final readonly class IssueMagicLink
     }
 
     /**
+     * The `deferred` default sends the email once the response has gone back to the
+     * browser, in the same PHP process. The response time still does not depend on the
+     * mail server, which is what the queue is for, but the email no longer waits for a
+     * worker to pick the job up: people who waited on a busy or once-a-minute worker
+     * asked again, and the second request invalidated the first link on its way.
+     * Null uses the application's default connection.
+     */
+    private function queueConnection(): ?string
+    {
+        $connection = config('filament-magic-login.queue_connection', 'deferred');
+
+        return $connection === null ? null : Cast::string($connection);
+    }
+
+    /**
      * @return class-string<MagicLinkNotificationContract>
      */
-    private function resolveNotificationClass(MagicLoginPlugin $plugin): string
+    private function resolveNotificationClass(MagicLoginPlugin $plugin, bool $queue): string
     {
         $class = $plugin->getNotificationClass();
 
         // Queueing a custom notification is the developer's own decision.
-        if ($class === MagicLinkNotification::class && config('filament-magic-login.queue', true)) {
+        if ($class === MagicLinkNotification::class && $queue) {
             return QueuedMagicLinkNotification::class;
         }
 

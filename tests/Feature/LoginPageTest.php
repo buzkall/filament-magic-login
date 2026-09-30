@@ -9,6 +9,8 @@ use Arzcode\FilamentMagicLogin\Notifications\QueuedMagicLinkNotification;
 use Arzcode\FilamentMagicLogin\Pages\Login;
 use Arzcode\FilamentMagicLogin\Tests\Fixtures\Notifications\CustomMagicLinkNotification;
 use Filament\Facades\Filament;
+use Illuminate\Notifications\ChannelManager;
+use Illuminate\Support\Defer\DeferredCallbackCollection;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\RateLimiter;
@@ -192,6 +194,49 @@ it('dispatches the notification class configured on the plugin', function (): vo
 
     Notification::assertSentTo($user, CustomMagicLinkNotification::class);
     Notification::assertNotSentTo($user, QueuedMagicLinkNotification::class);
+});
+
+it('queues the notification on the deferred connection by default', function (): void {
+    $user = makeUser();
+
+    requestLink($user->email);
+
+    Notification::assertSentTo(
+        $user,
+        QueuedMagicLinkNotification::class,
+        fn (QueuedMagicLinkNotification $notification): bool => $notification->connection === 'deferred',
+    );
+    Notification::assertNotSentTo($user, MagicLinkNotification::class);
+});
+
+it('uses the application default connection when none is configured', function (): void {
+    $this->rebootWith(['filament-magic-login.queue_connection' => null]);
+
+    $user = makeUser();
+
+    requestLink($user->email);
+
+    Notification::assertSentTo(
+        $user,
+        QueuedMagicLinkNotification::class,
+        fn (QueuedMagicLinkNotification $notification): bool => $notification->connection === null,
+    );
+});
+
+it('sends the email only after the response, without a worker', function (): void {
+    // The real notification sender, so the email goes through the array mailer.
+    Notification::swap(new ChannelManager(app()));
+
+    $user = makeUser();
+    $sent = fn (): int => app('mailer')->getSymfonyTransport()->messages()->count();
+
+    requestLink($user->email);
+
+    expect($sent())->toBe(0);
+
+    app(DeferredCallbackCollection::class)->invoke();
+
+    expect($sent())->toBe(1);
 });
 
 it('sends the unqueued notification when queueing is disabled', function (): void {

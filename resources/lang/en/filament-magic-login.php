@@ -69,6 +69,10 @@ return [
             'title' => 'Too many links sent',
             'body' => 'Please wait :seconds seconds before sending another.',
         ],
+        'failed' => [
+            'title' => 'Could not send the link',
+            'body' => 'The email to :user could not be sent. Check the mail configuration and the application log.',
+        ],
     ],
 
     'exceptions' => [

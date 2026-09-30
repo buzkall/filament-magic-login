@@ -69,6 +69,10 @@ return [
             'title' => 'S\'han enviat massa enllaços',
             'body' => 'Espera :seconds segons abans d\'enviar-ne un altre.',
         ],
+        'failed' => [
+            'title' => 'No s\'ha pogut enviar l\'enllaç',
+            'body' => 'No s\'ha pogut enviar el correu a :user. Revisa la configuració de correu i el log de l\'aplicació.',
+        ],
     ],
 
     'exceptions' => [

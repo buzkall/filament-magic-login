@@ -12,13 +12,14 @@ use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Auth\CanResetPassword;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
+use Throwable;
 
 /**
  * Sends a login link to a user an administrator picked, rather than to one who asked
  * for it themselves.
  *
- * The deliberate mirror image of SendMagicLink: no timing blur, no uniform silence,
- * and a rate limit keyed on the administrator instead of the recipient. Every refusal
+ * The deliberate mirror image of SendMagicLink: no timing blur, no uniform silence, no
+ * queue, and a rate limit keyed on the administrator instead of the recipient. Every refusal
  * comes back as a distinct outcome, because the person reading it is authenticated and
  * already able to see the users table.
  */
@@ -69,18 +70,32 @@ final readonly class SendMagicLinkToUser
             RateLimiter::hit($key, $plugin->getAdminRateLimitDecaySeconds());
         }
 
-        $token = $this->issuer->handle(
-            panel: $panel,
-            user: $user,
-            // Never carried over: whether a session persists is the recipient's own
-            // choice on the login form, not something an administrator decides for them.
-            remember: false,
-            expiresAfterMinutes: $minutes,
-            // The administrator's, not the recipient's — the row records who asked.
-            ip: $ip,
-            userAgent: $request?->userAgent(),
-            issuedBy: $issuedBy,
-        );
+        try {
+            $token = $this->issuer->handle(
+                panel: $panel,
+                user: $user,
+                // Never carried over: whether a session persists is the recipient's own
+                // choice on the login form, not something an administrator decides for them.
+                remember: false,
+                expiresAfterMinutes: $minutes,
+                // The administrator's, not the recipient's — the row records who asked.
+                ip: $ip,
+                userAgent: $request?->userAgent(),
+                issuedBy: $issuedBy,
+                // Sent within the request, unlike the login page. The queue there hides
+                // whether an address exists, which is moot here: the administrator picked
+                // the user. Sending now is what lets "sent" mean the mail server accepted
+                // it, rather than that a job was pushed onto a queue that may never run.
+                queue: false,
+            );
+        } catch (Throwable $e) {
+            // Reported rather than rethrown, so the administrator reads a failure in
+            // the panel and the application still logs the underlying error. The token
+            // already stored is harmless: its plaintext was never delivered.
+            report($e);
+
+            return MagicLinkDelivery::refused(MagicLinkDeliveryOutcome::Failed, $minutes);
+        }
 
         return MagicLinkDelivery::sent($token, $minutes);
     }

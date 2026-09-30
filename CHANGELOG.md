@@ -5,6 +5,25 @@ All notable changes to `filament-magic-login` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 1.5.1 - 2026-09.30
+
+### Changed
+
+- Links sent from the admin "send a login link" action are now sent right away instead of on
+  the queue, so "Login link sent" means the mail server accepted the email. The `queue` option now
+  only applies to the login page, where queueing keeps response times from revealing which
+  addresses have an account. See the README for the reasoning.
+- The login page's email now goes on Laravel's `deferred` queue connection by default, so it is
+  sent right after the response instead of waiting for a worker. Users who got tired of waiting
+  used to ask again, which invalidated the link on its way. Set the new `queue_connection` option
+  to `null` to go back to your default connection.
+- Requires Laravel 12.35 or later, the first release with the `deferred` queue driver.
+
+### Added
+
+- `MagicLinkDeliveryOutcome::Failed`: an admin-issued link whose email could not be sent now shows
+  "Could not send the link" and reports the exception, instead of failing the request.
+
 ## 1.5.0 - 2026-09-30
 
 ### Changed

@@ -74,8 +74,16 @@ return [
     // Must accept (string $url, int $expiresAfterMinutes, string $panelId) in its constructor.
     'notification' => MagicLinkNotification::class,
 
-    // Queue the notification. Ignored when a custom notification class is configured.
+    // Queue the notification sent from the login page. Keep it on: sending in the request
+    // makes known addresses answer measurably slower than unknown ones, which reveals who
+    // has an account. Links sent by an administrator are always sent right away.
+    // Ignored when a custom notification class is configured.
     'queue' => true,
+
+    // Connection the queued notification goes on. "deferred" sends it right after the
+    // response is returned, with no worker involved, so the email arrives in seconds.
+    // Null uses the application's default connection.
+    'queue_connection' => 'deferred',
 
     // Route segment appended to the panel path: /{panel}/magic-login/{token}
     'route_path' => 'magic-login',

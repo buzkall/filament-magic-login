@@ -585,7 +585,7 @@ class SendMagicLinkAction extends Action
 
         $recipient = $this->getRecipientLabel();
 
-        // One success and three distinct refusals, each of which the administrator needs
+        // One success and four distinct failures, each of which the administrator needs
         // told apart — which is why this is not ->successNotification().
         match ($result->outcome) {
             MagicLinkDeliveryOutcome::Sent => Notification::make()
@@ -618,6 +618,12 @@ class SendMagicLinkAction extends Action
                     'seconds' => $result->availableInSeconds ?? 0,
                 ]))
                 ->warning()
+                ->send(),
+
+            MagicLinkDeliveryOutcome::Failed => Notification::make()
+                ->title(__('filament-magic-login::filament-magic-login.admin.failed.title'))
+                ->body(__('filament-magic-login::filament-magic-login.admin.failed.body', ['user' => $recipient]))
+                ->danger()
                 ->send(),
         };
     }

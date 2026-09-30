@@ -69,6 +69,15 @@ final readonly class SendMagicLink
             expiresAfterMinutes: $targetPlugin->getExpiresAfterMinutes(),
             ip: $ip,
             userAgent: $request->userAgent(),
+            // Queued so a known address answers as fast as an unknown one. Sending over
+            // SMTP inside the request takes hundreds of milliseconds to seconds, far past
+            // what blurTiming() pads the unknown-user path with, so the response time
+            // would reveal which addresses have an account. A queue push costs about the
+            // same as the blur, and a slow or failing mail server cannot hang or break
+            // the login form either. By default the "queue" is Laravel's deferred
+            // connection, which sends right after the response instead of waiting for a
+            // worker; see IssueMagicLink::queueConnection().
+            queue: (bool) config('filament-magic-login.queue', true),
         );
     }
 

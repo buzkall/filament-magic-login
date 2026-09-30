@@ -342,7 +342,8 @@ on the plugin. Panel-level setters win; anything you do not set falls back to co
 | `adminRateLimit(int $maxAttempts, int $decaySeconds)` | `admin.rate_limit.*` | `10` / `60` | Limits admin-issued links, keyed by the administrator. `0` disables it. |
 | `adminAbility(string\|Closure\|null)` | `admin.ability` | `null` | Gate ability required to send a link. |
 | `adminIcon(string\|BackedEnum\|Closure\|false\|null)` | `admin.icon` | follows `icon` | Icon on the "send a login link" action and its modal. `false` removes it. |
-| — | `queue` | `true` | Send the shipped notification on the queue. |
+| — | `queue` | `true` | Queue the shipped notification sent from the login page. Admin-issued links are always sent right away. See [Why the login page queues and the admin action does not](#why-the-login-page-queues-and-the-admin-action-does-not). |
+| — | `queue_connection` | `deferred` | Connection for that queued notification. `deferred` sends it right after the response, with no worker. `null` uses your default connection. |
 | — | `storage.driver` | `database` | `database` or `cache`. Global only, not per panel. |
 | — | `blur_timing` | `true` | Pad unknown-address responses so timing does not leak account existence. |
 | — | `log_rejections.*` | `true` / default channel / `info` | Log every refusal with its reason. See [Events](#events). |
@@ -410,7 +411,9 @@ The simplest route is to extend `Arzcode\FilamentMagicLogin\Notifications\MagicL
 which already implements the contract and gives you a translated `MailMessage` to tweak.
 
 Queueing a custom notification is your call — implement `ShouldQueue` on it. The `queue` config
-option only decides whether the *shipped* notification is queued.
+option only decides whether the *shipped* notification is queued from the login page. A custom
+notification that implements `ShouldQueue` is queued from the admin action too, so "sent" there
+again means "handed to the queue".
 
 Notifications are sent through Laravel's notification system, so a notifiable implementing
 `HasLocalePreference` receives the email in its own locale automatically.
@@ -529,8 +532,42 @@ them for you to delete, the same as any other code you wrote by hand.
   for asking on the login page.
 - **`remember` is never carried into an admin-issued link.** Whether a session persists is the
   recipient's own choice on the login form.
-- **A queued notification means `Sent` is "handed to the queue"**, not "delivered". With
-  `queue => true`, a broken queue will still report success to the administrator.
+- **An admin-issued link is sent right away, not queued.** "Sent" means your mail server accepted
+  the email. If sending fails, the administrator sees "Could not send the link" and the exception
+  is reported to your application log.
+
+### Why the login page queues and the admin action does not
+
+**The login page queues the email to avoid leaking which addresses have an account.** The form
+answers the same way whether or not an address is registered, and for an unknown address it
+waits a random 50–150 ms (`blur_timing`) so the response takes about as long as a real send.
+That padding is sized for pushing a job onto the queue. Sending over SMTP inside the request
+takes hundreds of milliseconds to several seconds, so with `queue => false` a registered address
+would answer noticeably slower than an unknown one, and anyone timing the form could tell them
+apart. Queueing also keeps a slow or broken mail server from hanging the login form.
+
+Leave `queue` on.
+
+**By default the email is sent right after the response, not by a worker.** `queue_connection`
+defaults to Laravel's `deferred` connection, which runs the job in the same PHP process once the
+response has gone back to the browser. The visitor sees the confirmation straight away, the
+response time still does not depend on the mail server, and the email arrives within seconds
+instead of whenever a worker gets to it. That matters here: a user who waits too long asks for a
+second link, which invalidates the first, and then clicks the first email when it finally arrives.
+
+Two things to know about `deferred`:
+
+- **The response is only sent first when your server supports it.** PHP-FPM, LiteSpeed and Octane
+  do. Under `php artisan serve` or mod_php the browser waits for the email to be sent.
+- **A failed send is not retried.** The error is reported to your application log. If you want
+  retries, set `queue_connection` to a connection a worker processes, ideally one that isn't
+  stuck behind slow jobs.
+
+**The admin action always sends right away.** Enumeration is not a concern there, because the
+administrator already picked the user from the users table. What they need is an honest answer:
+sending right away means "sent" is only reported once the mail server accepted the email. If it
+were queued, a stopped worker would still report success while nothing arrives. The cost is a
+short wait in the modal, which is acceptable for an administrator.
 
 ### Multi-factor authentication
 

@@ -19,6 +19,8 @@ enum MagicLinkDeliveryOutcome: string
 
     case RateLimited = 'rate_limited';
 
+    case Failed = 'failed';
+
     public function isSuccessful(): bool
     {
         return $this === self::Sent;

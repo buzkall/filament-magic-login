@@ -12,6 +12,7 @@ use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification as FilamentNotification;
 use Filament\Support\Enums\Width;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Notification;
 
 use function Pest\Livewire\livewire;
@@ -269,6 +270,26 @@ it('tells the administrator what happened, in every outcome', function (Closure 
     'sent' => [fn () => makeUser(), 'sent', ['duration' => '60 minutes'], 'success'],
     'no email' => [fn () => makeUser(['email' => '', 'name' => 'Nameless Norah']), 'no_email', [], 'danger'],
 ]);
+
+it('tells the administrator when the email could not be sent', function (): void {
+    withUserResource();
+
+    $user = makeUser();
+
+    Exceptions::fake();
+    Notification::shouldReceive('send')->andThrow(new RuntimeException('Connection to mail server refused'));
+
+    livewire(ViewUser::class, ['record' => $user->getKey()])
+        ->callAction('sendMagicLink', ['expires_preset' => '60'])
+        ->assertNotified(
+            FilamentNotification::make()
+                ->title(__('filament-magic-login::filament-magic-login.admin.failed.title'))
+                ->body(__('filament-magic-login::filament-magic-login.admin.failed.body', ['user' => $user->email]))
+                ->danger(),
+        );
+
+    Exceptions::assertReported(RuntimeException::class);
+});
 
 it('hides itself from a user the target panel would turn away', function (): void {
     withUserResource();

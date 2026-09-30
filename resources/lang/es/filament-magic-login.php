@@ -69,6 +69,10 @@ return [
             'title' => 'Demasiados enlaces enviados',
             'body' => 'Espera :seconds segundos antes de enviar otro.',
         ],
+        'failed' => [
+            'title' => 'No se pudo enviar el enlace',
+            'body' => 'No se ha podido enviar el correo a :user. Revisa la configuración de correo y el log de la aplicación.',
+        ],
     ],
 
     'exceptions' => [
