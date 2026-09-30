@@ -598,14 +598,14 @@ option (GET shows a "Continue" button, POST consumes) is planned for a later rel
 
 ```bash
 composer test      # the whole suite against both storage drivers
-composer analyse   # Larastan, level 6
+composer analyse   # Larastan, level 10
 composer format    # Pint
 ```
 
 ## Contributing
 
 Pull requests are welcome. Please keep `composer test`, `composer analyse` and
-`composer format --test` green, and add any new user-facing string to all three language files —
+`composer format:test` green, and add any new user-facing string to all three language files —
 a test asserts they carry identical keys.
 
 ## License
