@@ -1,4 +1,4 @@
-# Filament Magic Login
+![Filament Magic Login](.github/banner.webp)
 
 Passwordless **"email me a login link"** for Filament panels, added *alongside* the standard
 email/password form rather than replacing it. Multi-panel aware, single-use hashed tokens,
