@@ -10,6 +10,7 @@ use Arzcode\FilamentMagicLogin\Tests\Fixtures\Models\User;
 use Arzcode\FilamentMagicLogin\Tests\Fixtures\Notifications\CustomMagicLinkNotification;
 use Arzcode\FilamentMagicLogin\Tests\TestCase;
 use Filament\Facades\Filament;
+use Filament\Notifications\NotificationMailbox;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 
@@ -148,16 +149,39 @@ function adminMagicLinkUrl(User $target, ?int $minutes = null, string $panelId =
 }
 
 /**
- * Bodies of the Filament notifications flashed to the session.
+ * Bodies of the Filament notifications sent during the request.
+ *
+ * Filament 5.8+ queues them in a cache-backed NotificationMailbox and keeps
+ * only the mailbox address under `filament.notifications`; earlier releases
+ * flash the notifications themselves to that session key.
  *
  * @return array<int, string>
  */
 function flashedNotificationBodies(): array
 {
-    return array_values(array_filter(array_map(
-        fn (array $notification): ?string => $notification['body'] ?? null,
-        session()->get('filament.notifications', []),
-    )));
+    if (class_exists(NotificationMailbox::class)) {
+        $mailbox = app(NotificationMailbox::class);
+        $mailbox->flush();
+        $notifications = $mailbox->pull();
+    } else {
+        $notifications = session()->get('filament.notifications', []);
+    }
+
+    if (! is_array($notifications)) {
+        return [];
+    }
+
+    $bodies = [];
+
+    foreach ($notifications as $notification) {
+        $body = is_array($notification) ? ($notification['body'] ?? null) : null;
+
+        if (is_string($body) && $body !== '') {
+            $bodies[] = $body;
+        }
+    }
+
+    return $bodies;
 }
 
 function php_syntax_ok(string $code): bool
