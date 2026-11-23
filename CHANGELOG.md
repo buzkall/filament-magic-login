@@ -5,6 +5,19 @@ All notable changes to `filament-magic-login` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 1.5.4 - 2026-11-23
+
+### Added
+
+- `SECURITY.md`: report vulnerabilities privately through GitHub's private vulnerability reporting.
+- Dependabot keeps the actions and the Composer dependencies up to date, with a 7-day cooldown on new releases.
+
+### Changed
+
+- The GitHub Actions workflows pin every action to a commit SHA.
+- The test suite reads Filament notifications from the `NotificationMailbox` that newer Filament releases use, so it
+  passes against both older and newer releases.
+
 ## 1.5.3 - 2026-09-30
 
 ### Changed
